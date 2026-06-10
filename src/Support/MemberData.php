@@ -82,6 +82,15 @@ class MemberData
 
         foreach ($fields as $field) {
             $key = $field['key'];
+
+            if (self::is_upload_field($field)) {
+                $uploaded_url = self::handle_upload_field($key);
+                if ($uploaded_url) {
+                    update_user_meta($user_id, 'wp_org_' . $key, $uploaded_url);
+                }
+                continue;
+            }
+
             $value = isset($data[$key]) ? $data[$key] : '';
 
             if ($field['type'] === 'checkbox') {
@@ -112,6 +121,16 @@ class MemberData
             $key = $field['key'];
             $required = !empty($field['required']);
             $value = isset($data[$key]) ? $data[$key] : '';
+
+            if (self::is_upload_field($field)) {
+                $file_name = isset($_FILES[$key]['name']) ? (string) $_FILES[$key]['name'] : '';
+
+                if ($required && $file_name === '' && !$is_update) {
+                    $errors->add($key . '_required', sprintf('%s wajib diupload.', $field['label']));
+                }
+
+                continue;
+            }
 
             if ($required && $value === '') {
                 $errors->add($key . '_required', sprintf('%s wajib diisi.', $field['label']));
@@ -227,5 +246,35 @@ class MemberData
         return array_values(array_filter(array_map('trim', $options), static function ($option) {
             return $option !== '';
         }));
+    }
+
+    public static function is_upload_field($field)
+    {
+        return in_array($field['type'], ['image', 'file'], true);
+    }
+
+    private static function handle_upload_field($key)
+    {
+        if (empty($_FILES[$key]) || empty($_FILES[$key]['name'])) {
+            return '';
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $uploaded = wp_handle_upload($_FILES[$key], [
+            'test_form' => false,
+            'mimes' => [
+                'jpg|jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'pdf' => 'application/pdf',
+            ],
+        ]);
+
+        if (!empty($uploaded['error'])) {
+            return '';
+        }
+
+        return esc_url_raw($uploaded['url']);
     }
 }

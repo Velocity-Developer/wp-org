@@ -53,6 +53,8 @@ class Profile
         $premium_note = get_user_meta($user_id, 'wp_org_premium_note', true);
         $premium_reference = get_user_meta($user_id, 'wp_org_premium_reference', true);
         $proof_url = get_user_meta($user_id, 'wp_org_premium_proof_url', true);
+        $member_card_settings = get_option('wp_org_member_card_settings', []);
+        $card_data = $premium_status === 'active' ? $this->get_member_card_asset($user_id) : null;
         $payment_banks = array_values(array_filter((array) get_option('wp_org_payment_banks', []), static function ($bank) {
             return !empty($bank['enabled']);
         }));
@@ -78,6 +80,15 @@ class Profile
             }
             echo '</div>';
 
+            if ($card_data) {
+                echo '<div class="wp-org-member-card">';
+                echo '<h3>Kartu Anggota Premium</h3>';
+                echo '<p>Kartu anggota Anda sudah aktif dan dapat diunduh.</p>';
+                echo '<p><img src="' . esc_attr($card_data['data_uri']) . '" alt="Kartu anggota premium"></p>';
+                echo '<div class="wp-org-actions"><a class="wp-org-button" href="' . esc_attr($card_data['data_uri']) . '" download="' . esc_attr($card_data['filename']) . '">Download Kartu Anggota</a></div>';
+                echo '</div>';
+            }
+
             if ($proof_url) {
                 echo '<div class="wp-org-proof-preview"><p><strong>Bukti pembayaran terakhir</strong></p><p><a href="' . esc_url($proof_url) . '" target="_blank" rel="noopener"><img src="' . esc_url($proof_url) . '" alt="Bukti pembayaran premium"></a></p></div>';
             }
@@ -98,7 +109,7 @@ class Profile
                 echo '</form></div>';
             }
         } else {
-            echo '<form class="wp-org-grid wp-org-region-form" method="post">';
+            echo '<form class="wp-org-grid wp-org-region-form" method="post" enctype="multipart/form-data">';
             wp_nonce_field('wp_org_profile_action', 'wp_org_profile_nonce');
 
             foreach ($fields as $field) {
@@ -208,6 +219,141 @@ class Profile
         return esc_url_raw($uploaded['url']);
     }
 
+    /**
+     * @return array<string, string>|null
+     */
+    private function get_member_card_asset($user_id)
+    {
+        $display_name = get_user_meta($user_id, 'wp_org_full_name', true);
+        if (!$display_name) {
+            $user = wp_get_current_user();
+            $display_name = $user->display_name;
+        }
+
+        $member_card_settings = get_option('wp_org_member_card_settings', []);
+        $member_number = 'ORG-' . str_pad((string) $user_id, 6, '0', STR_PAD_LEFT);
+        $region = trim(get_user_meta($user_id, 'wp_org_city_name', true) . ', ' . get_user_meta($user_id, 'wp_org_province_name', true), ', ');
+        $issued_at = get_user_meta($user_id, 'wp_org_premium_requested_at', true);
+        if (!$issued_at) {
+            $issued_at = current_time('mysql');
+        }
+
+        $svg = $this->build_member_card_svg([
+            'name' => $display_name,
+            'number' => $member_number,
+            'region' => $region ?: 'Indonesia',
+            'issued_at' => mysql2date('d M Y', $issued_at),
+            'organization_name' => sanitize_text_field($member_card_settings['organization_name'] ?? 'WP Org'),
+            'background_url' => esc_url_raw($member_card_settings['background_url'] ?? ''),
+            'logo_url' => esc_url_raw($member_card_settings['logo_url'] ?? ''),
+        ]);
+
+        return [
+            'data_uri' => 'data:image/svg+xml;base64,' . base64_encode($svg),
+            'filename' => 'kartu-anggota-' . strtolower(sanitize_title($display_name ?: (string) $user_id)) . '.svg',
+        ];
+    }
+
+    /**
+     * @param array<string, string> $data
+     */
+    private function build_member_card_svg($data)
+    {
+        $name = $this->escape_svg_text($data['name']);
+        $number = $this->escape_svg_text($data['number']);
+        $region = $this->escape_svg_text($data['region']);
+        $issued_at = $this->escape_svg_text($data['issued_at']);
+        $organization_name = $this->escape_svg_text($data['organization_name']);
+        $background_data_uri = $this->get_local_image_data_uri($data['background_url'] ?? '');
+        $logo_data_uri = $this->get_local_image_data_uri($data['logo_url'] ?? '');
+        $background_markup = $background_data_uri !== '' ? '<image href="' . $this->escape_svg_attr($background_data_uri) . '" x="0" y="0" width="1080" height="680" preserveAspectRatio="xMidYMid slice" opacity="0.28"/>' : '';
+        $logo_markup = $logo_data_uri !== '' ? '<image href="' . $this->escape_svg_attr($logo_data_uri) . '" x="858" y="78" width="140" height="140" preserveAspectRatio="xMidYMid meet"/>' : '';
+
+        return <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="680" viewBox="0 0 1080 680">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f3d5e" />
+      <stop offset="55%" stop-color="#135e96" />
+      <stop offset="100%" stop-color="#5ea3d6" />
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.06" />
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="680" rx="36" fill="url(#bg)"/>
+  {$background_markup}
+  <circle cx="920" cy="120" r="150" fill="#ffffff" fill-opacity="0.08"/>
+  <circle cx="180" cy="580" r="200" fill="#ffffff" fill-opacity="0.06"/>
+  <rect x="48" y="48" width="984" height="584" rx="30" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.2"/>
+  <text x="84" y="120" fill="#d8efff" font-size="28" font-family="Arial, sans-serif" letter-spacing="4">{$organization_name}</text>
+  {$logo_markup}
+  <text x="84" y="184" fill="#ffffff" font-size="62" font-family="Arial, sans-serif" font-weight="700">KARTU ANGGOTA PREMIUM</text>
+  <text x="84" y="258" fill="#d7ebfb" font-size="24" font-family="Arial, sans-serif">Nomor Anggota</text>
+  <text x="84" y="304" fill="#ffffff" font-size="40" font-family="Arial, sans-serif" font-weight="700">{$number}</text>
+  <text x="84" y="390" fill="#d7ebfb" font-size="24" font-family="Arial, sans-serif">Nama Anggota</text>
+  <text x="84" y="446" fill="#ffffff" font-size="48" font-family="Arial, sans-serif" font-weight="700">{$name}</text>
+  <text x="84" y="522" fill="#d7ebfb" font-size="24" font-family="Arial, sans-serif">Wilayah</text>
+  <text x="84" y="564" fill="#ffffff" font-size="30" font-family="Arial, sans-serif">{$region}</text>
+  <rect x="760" y="430" width="220" height="120" rx="24" fill="#ffffff" fill-opacity="0.16"/>
+  <text x="790" y="476" fill="#d7ebfb" font-size="20" font-family="Arial, sans-serif">Berlaku Sejak</text>
+  <text x="790" y="520" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="700">{$issued_at}</text>
+  <text x="790" y="584" fill="#d7ebfb" font-size="18" font-family="Arial, sans-serif">Status: AKTIF</text>
+</svg>
+SVG;
+    }
+
+    private function escape_svg_text($value)
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private function escape_svg_attr($value)
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private function get_local_image_data_uri($url)
+    {
+        $url = esc_url_raw((string) $url);
+        if ($url === '') {
+            return '';
+        }
+
+        $attachment_id = attachment_url_to_postid($url);
+        $path = '';
+
+        if ($attachment_id) {
+            $path = get_attached_file($attachment_id);
+        }
+
+        if (!$path) {
+            $uploads = wp_get_upload_dir();
+            if (!empty($uploads['baseurl']) && !empty($uploads['basedir']) && strpos($url, $uploads['baseurl']) === 0) {
+                $relative_path = ltrim(substr($url, strlen($uploads['baseurl'])), '/');
+                $path = trailingslashit($uploads['basedir']) . str_replace('/', DIRECTORY_SEPARATOR, $relative_path);
+            }
+        }
+
+        if (!$path || !file_exists($path)) {
+            return '';
+        }
+
+        $mime = wp_check_filetype($path);
+        $type = !empty($mime['type']) ? $mime['type'] : mime_content_type($path);
+        if (!$type) {
+            return '';
+        }
+
+        $contents = file_get_contents($path);
+        if ($contents === false) {
+            return '';
+        }
+
+        return 'data:' . $type . ';base64,' . base64_encode($contents);
+    }
+
     private function render_field($field, $value, Regions $regions)
     {
         $key = $field['key'];
@@ -232,6 +378,18 @@ class Profile
             foreach ($options as $option) {
                 $html .= '<label><input type="checkbox" name="' . esc_attr($key) . '[]" value="' . esc_attr($option) . '"' . checked(in_array($option, $selected_values, true), true, false) . '> ' . esc_html($option) . '</label> ';
             }
+        } elseif ($field['type'] === 'image') {
+            $current = (string) $value;
+            if ($current !== '') {
+                $html .= '<p><img src="' . esc_url($current) . '" alt="' . esc_attr($field['label']) . '" style="max-width:180px;height:auto;border:1px solid #dcdcde;border-radius:12px"></p>';
+            }
+            $html .= '<input id="' . esc_attr($key) . '" name="' . esc_attr($key) . '" type="file" accept="image/jpeg,image/png,image/webp"' . $required . '>';
+        } elseif ($field['type'] === 'file') {
+            $current = (string) $value;
+            if ($current !== '') {
+                $html .= '<p><a href="' . esc_url($current) . '" target="_blank" rel="noopener">Lihat file saat ini</a></p>';
+            }
+            $html .= '<input id="' . esc_attr($key) . '" name="' . esc_attr($key) . '" type="file"' . $required . '>';
         } elseif ($field['type'] === 'region_province') {
             $html .= '<select id="' . esc_attr($key) . '" class="wp-org-province" name="' . esc_attr($key) . '"' . $required . '><option value="">Pilih provinsi</option>';
             foreach ($regions->get_provinces() as $province) {

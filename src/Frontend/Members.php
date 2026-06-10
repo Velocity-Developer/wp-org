@@ -22,18 +22,28 @@ class Members
 
         $search = isset($_GET['member_search']) ? sanitize_text_field(wp_unslash($_GET['member_search'])) : '';
         $status = isset($_GET['member_status']) ? sanitize_key(wp_unslash($_GET['member_status'])) : 'approved';
+        $city_code = isset($_GET['member_city']) ? sanitize_text_field(wp_unslash($_GET['member_city'])) : '';
+        $cities = $this->get_available_cities();
+        $meta_query = [
+            [
+                'key' => 'wp_org_status',
+                'value' => $status,
+            ],
+        ];
+
+        if ($city_code !== '') {
+            $meta_query[] = [
+                'key' => 'wp_org_city_code',
+                'value' => $city_code,
+            ];
+        }
 
         $args = [
             'role__in' => ['org_member', 'org_admin'],
             'number' => 50,
             'search' => $search ? '*' . $search . '*' : '',
             'search_columns' => ['user_login', 'user_email', 'display_name'],
-            'meta_query' => [
-                [
-                    'key' => 'wp_org_status',
-                    'value' => $status,
-                ],
-            ],
+            'meta_query' => $meta_query,
         ];
 
         $users = get_users($args);
@@ -46,6 +56,11 @@ class Members
         echo '<div class="wp-org-field"><label for="member_status">Status</label><select id="member_status" name="member_status">';
         foreach ($statuses as $key => $label) {
             echo '<option value="' . esc_attr($key) . '"' . selected($status, $key, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select></div>';
+        echo '<div class="wp-org-field"><label for="member_city">Kota/Kabupaten</label><select id="member_city" name="member_city"><option value="">Semua kota/kabupaten</option>';
+        foreach ($cities as $code => $label) {
+            echo '<option value="' . esc_attr($code) . '"' . selected($city_code, $code, false) . '>' . esc_html($label) . '</option>';
         }
         echo '</select></div><div class="wp-org-actions"><button class="wp-org-button" type="submit">Filter</button></div></form>';
         echo '<table class="wp-org-table"><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Wilayah</th></tr></thead><tbody>';
@@ -65,5 +80,32 @@ class Members
         echo '</tbody></table></div>';
 
         return (string) ob_get_clean();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function get_available_cities()
+    {
+        $users = get_users([
+            'role__in' => ['org_member', 'org_admin'],
+            'number' => 500,
+            'fields' => 'ID',
+        ]);
+
+        $cities = [];
+
+        foreach ($users as $user_id) {
+            $code = (string) get_user_meta($user_id, 'wp_org_city_code', true);
+            $name = (string) get_user_meta($user_id, 'wp_org_city_name', true);
+
+            if ($code !== '' && $name !== '') {
+                $cities[$code] = $name;
+            }
+        }
+
+        asort($cities);
+
+        return $cities;
     }
 }

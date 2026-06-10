@@ -15,6 +15,7 @@ class AdminMenu
         add_action('admin_post_wp_org_save_settings', [$this, 'handle_save_settings']);
         add_action('admin_post_wp_org_seed_members', [$this, 'handle_seed_members']);
         add_action('admin_post_wp_org_save_payment_banks', [$this, 'handle_save_payment_banks']);
+        add_action('admin_post_wp_org_save_member_card_settings', [$this, 'handle_save_member_card_settings']);
         add_action('admin_post_wp_org_update_premium_status', [$this, 'handle_update_premium_status']);
     }
 
@@ -126,12 +127,14 @@ class AdminMenu
         $captcha_provider = sanitize_text_field($velocity_captcha['provider'] ?? 'google');
         $seed_message = isset($_GET['seeded']) ? absint($_GET['seeded']) : -1;
         $payment_banks = array_values((array) get_option('wp_org_payment_banks', []));
+        $member_card = get_option('wp_org_member_card_settings', []);
 
         echo '<div class="wrap"><h1>Pengaturan WP Org</h1>';
         echo '<nav class="nav-tab-wrapper">';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=general')) . '" class="nav-tab ' . ($active_tab === 'general' ? 'nav-tab-active' : '') . '">Umum</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=data')) . '" class="nav-tab ' . ($active_tab === 'data' ? 'nav-tab-active' : '') . '">Data</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=payment-banks')) . '" class="nav-tab ' . ($active_tab === 'payment-banks' ? 'nav-tab-active' : '') . '">Bank Pembayaran</a>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=member-card')) . '" class="nav-tab ' . ($active_tab === 'member-card' ? 'nav-tab-active' : '') . '">Kartu Anggota</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=documentation')) . '" class="nav-tab ' . ($active_tab === 'documentation' ? 'nav-tab-active' : '') . '">Dokumentasi</a>';
         echo '</nav>';
 
@@ -169,6 +172,32 @@ class AdminMenu
             echo '<p><button type="button" class="button" id="wp-org-add-bank">Tambah Bank</button></p>';
             echo '<script type="text/html" id="tmpl-wp-org-bank-row">' . $this->render_bank_row('__index__', ['bank_name' => '', 'account_name' => '', 'account_number' => '', 'enabled' => 1]) . '</script>';
             submit_button('Simpan Bank Pembayaran');
+            echo '</form></div>';
+            return;
+        }
+
+        if ($active_tab === 'member-card') {
+            echo '<form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            wp_nonce_field('wp_org_save_member_card_settings');
+            echo '<input type="hidden" name="action" value="wp_org_save_member_card_settings">';
+            echo '<table class="form-table"><tbody>';
+            echo '<tr><th scope="row">Nama Organisasi</th><td><input class="regular-text" type="text" name="member_card[organization_name]" value="' . esc_attr($member_card['organization_name'] ?? 'WP Org') . '"><p class="description">Nama ini tampil pada kartu anggota.</p></td></tr>';
+            echo '<tr><th scope="row">Background Kartu</th><td>';
+            if (!empty($member_card['background_url'])) {
+                echo '<p><img src="' . esc_url($member_card['background_url']) . '" alt="Background kartu" style="max-width:320px;height:auto;border:1px solid #dcdcde;border-radius:10px"></p>';
+            }
+            echo '<input class="regular-text" type="file" name="member_card_background" accept="image/jpeg,image/png,image/webp">';
+            echo '<p class="description">Upload gambar background kartu. Kosongkan jika tidak ingin mengganti background saat ini.</p>';
+            echo '</td></tr>';
+            echo '<tr><th scope="row">Logo Organisasi</th><td>';
+            if (!empty($member_card['logo_url'])) {
+                echo '<p><img src="' . esc_url($member_card['logo_url']) . '" alt="Logo organisasi" style="max-width:140px;height:auto;border:1px solid #dcdcde;border-radius:10px;padding:8px;background:#fff"></p>';
+            }
+            echo '<input class="regular-text" type="file" name="member_card_logo" accept="image/jpeg,image/png,image/webp,image/svg+xml">';
+            echo '<p class="description">Upload logo organisasi. Kosongkan jika tidak ingin mengganti logo saat ini.</p>';
+            echo '</td></tr>';
+            echo '</tbody></table>';
+            submit_button('Simpan Pengaturan Kartu');
             echo '</form></div>';
             return;
         }
@@ -334,6 +363,59 @@ class AdminMenu
 
         wp_safe_redirect(admin_url('admin.php?page=wp-org-settings&tab=payment-banks'));
         exit;
+    }
+
+    public function handle_save_member_card_settings()
+    {
+        if (!current_user_can('wp_org_manage_settings') || !check_admin_referer('wp_org_save_member_card_settings')) {
+            wp_die('Permintaan tidak valid.');
+        }
+
+        $member_card = isset($_POST['member_card']) ? (array) wp_unslash($_POST['member_card']) : [];
+        $existing = get_option('wp_org_member_card_settings', []);
+        $background_url = $this->handle_member_card_upload('member_card_background', $existing['background_url'] ?? '', [
+            'jpg|jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+        ]);
+        $logo_url = $this->handle_member_card_upload('member_card_logo', $existing['logo_url'] ?? '', [
+            'jpg|jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+        ]);
+
+        update_option('wp_org_member_card_settings', [
+            'organization_name' => sanitize_text_field($member_card['organization_name'] ?? 'WP Org'),
+            'background_url' => $background_url,
+            'logo_url' => $logo_url,
+        ]);
+
+        wp_safe_redirect(admin_url('admin.php?page=wp-org-settings&tab=member-card'));
+        exit;
+    }
+
+    /**
+     * @param array<string, string> $mimes
+     */
+    private function handle_member_card_upload($field_name, $current_url, $mimes)
+    {
+        if (empty($_FILES[$field_name]) || empty($_FILES[$field_name]['name'])) {
+            return esc_url_raw($current_url);
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $uploaded = wp_handle_upload($_FILES[$field_name], [
+            'test_form' => false,
+            'mimes' => $mimes,
+        ]);
+
+        if (!empty($uploaded['error'])) {
+            return esc_url_raw($current_url);
+        }
+
+        return esc_url_raw($uploaded['url']);
     }
 
     public function handle_seed_members()

@@ -20,6 +20,7 @@ class Installer
     {
         if (!get_option('wp_org_registration_fields')) {
             update_option('wp_org_registration_fields', [
+                ['key' => 'member_photo', 'label' => 'Foto Anggota', 'type' => 'image', 'required' => 0, 'enabled' => 1],
                 ['key' => 'full_name', 'label' => 'Nama Lengkap', 'type' => 'text', 'required' => 1, 'enabled' => 1],
                 ['key' => 'phone', 'label' => 'Nomor HP', 'type' => 'text', 'required' => 1, 'enabled' => 1],
                 ['key' => 'province_code', 'label' => 'Provinsi', 'type' => 'region_province', 'required' => 1, 'enabled' => 1],
@@ -47,6 +48,14 @@ class Installer
                     'account_number' => '1234567890',
                     'enabled' => 1,
                 ],
+            ]);
+        }
+
+        if (!get_option('wp_org_member_card_settings')) {
+            update_option('wp_org_member_card_settings', [
+                'organization_name' => 'WP Org',
+                'background_url' => '',
+                'logo_url' => '',
             ]);
         }
     }

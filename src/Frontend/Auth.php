@@ -46,7 +46,7 @@ class Auth
         echo '<div class="wp-org-card">';
         echo '<h2>Daftar Anggota</h2>';
         $this->output_flash();
-        echo '<form class="wp-org-grid wp-org-region-form" method="post">';
+        echo '<form class="wp-org-grid wp-org-region-form" method="post" enctype="multipart/form-data">';
         wp_nonce_field('wp_org_register_action', 'wp_org_register_nonce');
         echo '<div class="wp-org-grid wp-org-grid-2">';
         $this->render_field('Nama Pengguna', 'username', 'text', true);
@@ -205,6 +205,10 @@ class Auth
             foreach ($options as $option) {
                 $html .= '<label><input type="checkbox" name="' . esc_attr($key) . '[]" value="' . esc_attr($option) . '"' . checked(in_array($option, $selected_values, true), true, false) . '> ' . esc_html($option) . '</label> ';
             }
+        } elseif ($field['type'] === 'image') {
+            $html .= '<input id="' . esc_attr($key) . '" name="' . esc_attr($key) . '" type="file" accept="image/jpeg,image/png,image/webp"' . $required . '>';
+        } elseif ($field['type'] === 'file') {
+            $html .= '<input id="' . esc_attr($key) . '" name="' . esc_attr($key) . '" type="file"' . $required . '>';
         } elseif ($field['type'] === 'region_province') {
             $html .= '<select id="' . esc_attr($key) . '" class="wp-org-province" name="' . esc_attr($key) . '"' . $required . '><option value="">Pilih provinsi</option>';
             foreach ($regions->get_provinces() as $province) {
