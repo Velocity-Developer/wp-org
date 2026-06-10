@@ -44,8 +44,8 @@ class Members
 
         ob_start();
         echo '<form class="wp-org-grid wp-org-grid-2" method="get">';
-        echo '<div class="wp-org-field"><label for="member_search">Cari anggota</label><input id="member_search" type="text" name="member_search" value="' . esc_attr($search) . '"></div>';
-        echo '<div class="wp-org-field"><label for="member_city">Kota/Kabupaten</label><select id="member_city" name="member_city"><option value="">Semua kota/kabupaten</option>';
+        echo '<div class="wp-org-field"><input id="member_search" type="text" name="member_search" value="' . esc_attr($search) . '" placeholder="Cari anggota"></div>';
+        echo '<div class="wp-org-field"><select id="member_city" name="member_city" aria-label="Kota/Kabupaten"><option value="">Pilih kota/kabupaten</option>';
         foreach ($cities as $code => $label) {
             echo '<option value="' . esc_attr($code) . '"' . selected($city_code, $code, false) . '>' . esc_html($label) . '</option>';
         }
