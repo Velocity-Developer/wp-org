@@ -58,8 +58,13 @@ class Members
             foreach ($users as $user) {
                 $region = trim(get_user_meta($user->ID, 'wp_org_city_name', true) . ', ' . get_user_meta($user->ID, 'wp_org_province_name', true), ', ');
                 $premium_status = MemberData::get_premium_status($user->ID);
-                $premium_label = MemberData::get_premium_statuses()[$premium_status] ?? $premium_status;
-                echo '<tr><td>' . esc_html($user->display_name) . '<br><small>' . esc_html($premium_label) . '</small></td><td>' . esc_html($user->user_email) . '</td><td>' . esc_html($region ?: '-') . '</td></tr>';
+                $verified_badge = '';
+
+                if ($premium_status === 'active') {
+                    $verified_badge = '<small class="wp-org-verified-badge" aria-label="Verified">&#10003;</small>';
+                }
+
+                echo '<tr><td>' . esc_html($user->display_name) . $verified_badge . '</td><td>' . esc_html($user->user_email) . '</td><td>' . esc_html($region ?: '-') . '</td></tr>';
             }
         }
 

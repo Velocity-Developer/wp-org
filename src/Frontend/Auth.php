@@ -44,7 +44,6 @@ class Auth
 
         ob_start();
         echo '<div class="wp-org-card">';
-        echo '<h2>Daftar Anggota</h2>';
         $this->output_flash();
         echo '<form class="wp-org-grid wp-org-region-form" method="post" enctype="multipart/form-data">';
         wp_nonce_field('wp_org_register_action', 'wp_org_register_nonce');

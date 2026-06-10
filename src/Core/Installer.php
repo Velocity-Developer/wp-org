@@ -54,6 +54,7 @@ class Installer
         if (!get_option('wp_org_member_card_settings')) {
             update_option('wp_org_member_card_settings', [
                 'organization_name' => 'WP Org',
+                'member_number_prefix' => 'ORG',
                 'background_url' => '',
                 'logo_url' => '',
             ]);

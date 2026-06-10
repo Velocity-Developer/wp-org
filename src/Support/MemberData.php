@@ -90,6 +90,20 @@ class MemberData
         update_user_meta($user_id, 'wp_org_premium_status', $status);
     }
 
+    public static function get_member_number_prefix()
+    {
+        $settings = get_option('wp_org_member_card_settings', []);
+        $prefix = sanitize_text_field($settings['member_number_prefix'] ?? 'ORG');
+        $prefix = trim($prefix);
+
+        return $prefix !== '' ? $prefix : 'ORG';
+    }
+
+    public static function get_member_number($user_id)
+    {
+        return self::get_member_number_prefix() . '-' . str_pad((string) $user_id, 6, '0', STR_PAD_LEFT);
+    }
+
     public static function save_profile_fields($user_id, $data)
     {
         $fields = self::get_registration_fields();

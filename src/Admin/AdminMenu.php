@@ -40,44 +40,45 @@ class AdminMenu
             'order' => 'DESC',
         ]);
         $statuses = MemberData::get_all_statuses();
-
         $premium_statuses = MemberData::get_premium_statuses();
-        echo '<div class="wrap"><h1>Data Anggota</h1><table class="widefat striped"><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Premium</th><th>Tanggal Daftar</th><th>Catatan Admin</th><th>Aksi</th></tr></thead><tbody>';
+        $status_totals = array_fill_keys(array_keys($statuses), 0);
+        $premium_totals = array_fill_keys(array_keys($premium_statuses), 0);
+
+        foreach ($users as $user) {
+            $member_status = MemberData::get_status($user->ID);
+            $premium_status = MemberData::get_premium_status($user->ID);
+
+            if (isset($status_totals[$member_status])) {
+                $status_totals[$member_status]++;
+            }
+
+            if (isset($premium_totals[$premium_status])) {
+                $premium_totals[$premium_status]++;
+            }
+        }
+
+        echo '<div class="wrap wp-org-admin">';
+        echo '<div class="wp-org-admin-hero"><div><h1>Data Anggota</h1><p>Kelola status pendaftaran, premium membership, dan catatan internal anggota dalam satu tampilan.</p></div></div>';
+        echo '<div class="wp-org-admin-summary">';
+        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Total Anggota</span><strong>' . esc_html((string) count($users)) . '</strong></div>';
+        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Approved</span><strong>' . esc_html((string) ($status_totals['approved'] ?? 0)) . '</strong></div>';
+        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Pending</span><strong>' . esc_html((string) ($status_totals['pending'] ?? 0)) . '</strong></div>';
+        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Premium Aktif</span><strong>' . esc_html((string) ($premium_totals['active'] ?? 0)) . '</strong></div>';
+        echo '</div>';
+        echo '<div class="wp-org-admin-card wp-org-admin-table-card"><table class="widefat striped wp-org-admin-table"><thead><tr><th>Nama</th><th>No. Anggota</th><th>Email</th><th>Status</th><th>Premium</th><th>Tanggal Daftar</th><th>Catatan Admin</th><th>Aksi</th></tr></thead><tbody>';
 
         if (!$users) {
-            echo '<tr><td colspan="7">Belum ada anggota.</td></tr>';
+            echo '<tr><td colspan="8">Belum ada anggota.</td></tr>';
         }
 
         foreach ($users as $user) {
+            $member_number = $this->get_member_number($user->ID);
             $status = MemberData::get_status($user->ID);
             $note = get_user_meta($user->ID, 'wp_org_admin_note', true);
             $premium_status = MemberData::get_premium_status($user->ID);
             $premium_ref = get_user_meta($user->ID, 'wp_org_premium_reference', true);
             $premium_proof_url = get_user_meta($user->ID, 'wp_org_premium_proof_url', true);
-            echo '<tr><td>' . esc_html($user->display_name) . '</td><td>' . esc_html($user->user_email) . '</td><td>' . esc_html($statuses[$status] ?? $status) . '</td><td>' . esc_html($premium_statuses[$premium_status] ?? $premium_status) . '<br><small>' . esc_html($premium_ref) . '</small>' . ($premium_proof_url ? '<br><a href="' . esc_url($premium_proof_url) . '" target="_blank" rel="noopener">Lihat Bukti</a>' : '') . '</td><td>' . esc_html(get_user_meta($user->ID, 'wp_org_registered_at', true) ?: $user->user_registered) . '</td><td>' . esc_html($note) . '</td><td>';
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-            wp_nonce_field('wp_org_update_member_status_' . $user->ID);
-            echo '<input type="hidden" name="action" value="wp_org_update_member_status">';
-            echo '<input type="hidden" name="user_id" value="' . esc_attr((string) $user->ID) . '">';
-            echo '<select name="status">';
-            foreach ($statuses as $key => $label) {
-                echo '<option value="' . esc_attr($key) . '"' . selected($status, $key, false) . '>' . esc_html($label) . '</option>';
-            }
-            echo '</select> ';
-            echo '<input type="text" name="admin_note" value="' . esc_attr($note) . '" placeholder="Catatan internal"> ';
-            submit_button('Simpan', 'secondary', 'submit', false);
-            echo '</form><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin-top:8px">';
-            wp_nonce_field('wp_org_update_premium_status_' . $user->ID);
-            echo '<input type="hidden" name="action" value="wp_org_update_premium_status">';
-            echo '<input type="hidden" name="user_id" value="' . esc_attr((string) $user->ID) . '">';
-            echo '<select name="premium_status">';
-            foreach ($premium_statuses as $key => $label) {
-                echo '<option value="' . esc_attr($key) . '"' . selected($premium_status, $key, false) . '>' . esc_html($label) . '</option>';
-            }
-            echo '</select> ';
-            echo '<input type="text" name="premium_note" value="' . esc_attr((string) get_user_meta($user->ID, 'wp_org_premium_note', true)) . '" placeholder="Catatan premium"> ';
-            submit_button('Update Premium', 'secondary', 'submit', false);
-            echo '</form></td></tr>';
+            echo '<tr><td><strong>' . esc_html($user->display_name) . '</strong></td><td><code>' . esc_html($member_number) . '</code></td><td><a href="mailto:' . esc_attr($user->user_email) . '">' . esc_html($user->user_email) . '</a></td><td><span class="wp-org-admin-badge wp-org-admin-badge-' . esc_attr($status) . '">' . esc_html($statuses[$status] ?? $status) . '</span></td><td><span class="wp-org-admin-badge wp-org-admin-badge-premium-' . esc_attr($premium_status) . '">' . esc_html($premium_statuses[$premium_status] ?? $premium_status) . '</span>' . ($premium_ref ? '<br><small class="wp-org-admin-subtle">' . esc_html($premium_ref) . '</small>' : '') . ($premium_proof_url ? '<br><a class="wp-org-admin-link" href="' . esc_url($premium_proof_url) . '" target="_blank" rel="noopener">Lihat Bukti</a>' : '') . '</td><td>' . esc_html(get_user_meta($user->ID, 'wp_org_registered_at', true) ?: $user->user_registered) . '</td><td>' . ($note ? esc_html($note) : '<span class="wp-org-admin-subtle">Belum ada catatan</span>') . '</td><td><button type="button" class="button button-secondary wp-org-admin-open-modal" data-modal-target="wp-org-member-modal-' . esc_attr((string) $user->ID) . '">Kelola</button>' . $this->render_member_action_modal($user, $statuses, $status, $note, $premium_statuses, $premium_status) . '</td></tr>';
         }
 
         echo '</tbody></table></div>';
@@ -90,17 +91,17 @@ class AdminMenu
         }
 
         $fields = MemberData::get_all_registration_fields();
-        echo '<div class="wrap"><h1>Field Formulir</h1><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        echo '<div class="wrap wp-org-admin"><div class="wp-org-admin-hero"><div><h1>Field Formulir</h1><p>Atur struktur form pendaftaran tanpa perlu mengubah kode frontend.</p></div></div><div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('wp_org_save_fields');
         echo '<input type="hidden" name="action" value="wp_org_save_fields">';
-        echo '<p>Tambah, hapus, aktifkan, atau nonaktifkan field pendaftaran. Field nonaktif tetap tersimpan tetapi tidak ditampilkan di frontend.</p>';
-        echo '<table class="widefat striped wp-org-fields-table"><thead><tr><th>Key</th><th>Label</th><th>Tipe</th><th>Opsi</th><th>Wajib</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody data-next-index="' . esc_attr((string) count($fields)) . '">';
+        echo '<p class="description">Tambah, hapus, aktifkan, atau nonaktifkan field pendaftaran. Field nonaktif tetap tersimpan tetapi tidak ditampilkan di frontend.</p>';
+        echo '<div class="wp-org-admin-table-card"><table class="widefat striped wp-org-fields-table wp-org-admin-table"><thead><tr><th>Key</th><th>Label</th><th>Tipe</th><th>Opsi</th><th>Wajib</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody data-next-index="' . esc_attr((string) count($fields)) . '">';
 
         foreach ($fields as $index => $field) {
             echo $this->render_field_row($index, $field);
         }
 
-        echo '</tbody></table>';
+        echo '</tbody></table></div>';
         echo '<p><button type="button" class="button" id="wp-org-add-field">Tambah Field</button></p>';
         echo '<script type="text/html" id="tmpl-wp-org-field-row">' . $this->render_field_row('__index__', [
             'key' => '',
@@ -111,7 +112,7 @@ class AdminMenu
             'options' => '',
         ]) . '</script>';
         submit_button('Simpan Field');
-        echo '</form></div>';
+        echo '</form></div></div>';
     }
 
     public function render_settings_page()
@@ -129,8 +130,8 @@ class AdminMenu
         $payment_banks = array_values((array) get_option('wp_org_payment_banks', []));
         $member_card = get_option('wp_org_member_card_settings', []);
 
-        echo '<div class="wrap"><h1>Pengaturan WP Org</h1>';
-        echo '<nav class="nav-tab-wrapper">';
+        echo '<div class="wrap wp-org-admin"><div class="wp-org-admin-hero"><div><h1>Pengaturan WP Org</h1><p>Seluruh konfigurasi utama plugin dikumpulkan dalam panel yang lebih terstruktur.</p></div></div>';
+        echo '<nav class="nav-tab-wrapper wp-org-admin-tabs">';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=general')) . '" class="nav-tab ' . ($active_tab === 'general' ? 'nav-tab-active' : '') . '">Umum</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=data')) . '" class="nav-tab ' . ($active_tab === 'data' ? 'nav-tab-active' : '') . '">Data</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=payment-banks')) . '" class="nav-tab ' . ($active_tab === 'payment-banks' ? 'nav-tab-active' : '') . '">Bank Pembayaran</a>';
@@ -143,7 +144,7 @@ class AdminMenu
                 echo '<div class="notice notice-success is-dismissible"><p>Seeder anggota selesai. ' . esc_html((string) $seed_message) . ' anggota baru dibuat.</p></div>';
             }
 
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            echo '<div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
             wp_nonce_field('wp_org_seed_members');
             echo '<input type="hidden" name="action" value="wp_org_seed_members">';
             echo '<table class="form-table"><tbody>';
@@ -151,24 +152,24 @@ class AdminMenu
             echo '<tr><th scope="row">Password Default</th><td><input class="regular-text" type="text" name="seed_password" value="Member123!"><p class="description">Password ini dipakai untuk seluruh akun hasil seeder.</p></td></tr>';
             echo '</tbody></table>';
             submit_button('Jalankan Seeder Anggota');
-            echo '</form>';
+            echo '</form></div>';
             echo '</div>';
 
             return;
         }
 
         if ($active_tab === 'payment-banks') {
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            echo '<div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
             wp_nonce_field('wp_org_save_payment_banks');
             echo '<input type="hidden" name="action" value="wp_org_save_payment_banks">';
             echo '<table class="form-table"><tbody>';
             echo '<tr><th scope="row">Biaya Premium</th><td><input class="regular-text" type="number" min="0" name="premium_fee" value="' . esc_attr((string) absint($general['premium_fee'] ?? 0)) . '"><p class="description">Biaya yang ditampilkan ke member saat upgrade premium.</p></td></tr>';
             echo '</tbody></table>';
-            echo '<table class="widefat striped wp-org-bank-table"><thead><tr><th>Bank</th><th>Nama Rekening</th><th>Nomor Rekening</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody data-next-index="' . esc_attr((string) count($payment_banks)) . '">';
+            echo '<div class="wp-org-admin-table-card"><table class="widefat striped wp-org-bank-table wp-org-admin-table"><thead><tr><th>Bank</th><th>Nama Rekening</th><th>Nomor Rekening</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody data-next-index="' . esc_attr((string) count($payment_banks)) . '">';
             foreach ($payment_banks as $index => $bank) {
                 echo $this->render_bank_row($index, $bank);
             }
-            echo '</tbody></table>';
+            echo '</tbody></table></div>';
             echo '<p><button type="button" class="button" id="wp-org-add-bank">Tambah Bank</button></p>';
             echo '<script type="text/html" id="tmpl-wp-org-bank-row">' . $this->render_bank_row('__index__', ['bank_name' => '', 'account_name' => '', 'account_number' => '', 'enabled' => 1]) . '</script>';
             submit_button('Simpan Bank Pembayaran');
@@ -177,11 +178,12 @@ class AdminMenu
         }
 
         if ($active_tab === 'member-card') {
-            echo '<form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            echo '<div class="wp-org-admin-card"><form method="post" enctype="multipart/form-data" action="' . esc_url(admin_url('admin-post.php')) . '">';
             wp_nonce_field('wp_org_save_member_card_settings');
             echo '<input type="hidden" name="action" value="wp_org_save_member_card_settings">';
             echo '<table class="form-table"><tbody>';
             echo '<tr><th scope="row">Nama Organisasi</th><td><input class="regular-text" type="text" name="member_card[organization_name]" value="' . esc_attr($member_card['organization_name'] ?? 'WP Org') . '"><p class="description">Nama ini tampil pada kartu anggota.</p></td></tr>';
+            echo '<tr><th scope="row">Prefix Nomor Anggota</th><td><input class="regular-text" type="text" name="member_card[member_number_prefix]" value="' . esc_attr($member_card['member_number_prefix'] ?? 'ORG') . '" placeholder="Contoh: ORG"><p class="description">Dipakai sebagai awalan nomor anggota, misalnya <code>ORG-000001</code>.</p></td></tr>';
             echo '<tr><th scope="row">Background Kartu</th><td>';
             if (!empty($member_card['background_url'])) {
                 echo '<p><img src="' . esc_url($member_card['background_url']) . '" alt="Background kartu" style="max-width:320px;height:auto;border:1px solid #dcdcde;border-radius:10px"></p>';
@@ -203,7 +205,7 @@ class AdminMenu
         }
 
         if ($active_tab === 'documentation') {
-            echo '<div class="card" style="max-width:960px;padding:20px 24px">';
+            echo '<div class="wp-org-admin-card wp-org-admin-docs">';
             echo '<h2>Cara Penggunaan Plugin WP Org</h2>';
             echo '<p>Plugin ini dipakai untuk registrasi anggota, login frontend, pengelolaan profil anggota, daftar anggota, dan pengajuan member premium.</p>';
 
@@ -248,7 +250,7 @@ class AdminMenu
             return;
         }
 
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        echo '<div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('wp_org_save_settings');
         echo '<input type="hidden" name="action" value="wp_org_save_settings">';
         echo '<table class="form-table"><tbody>';
@@ -387,6 +389,7 @@ class AdminMenu
 
         update_option('wp_org_member_card_settings', [
             'organization_name' => sanitize_text_field($member_card['organization_name'] ?? 'WP Org'),
+            'member_number_prefix' => sanitize_text_field($member_card['member_number_prefix'] ?? 'ORG'),
             'background_url' => $background_url,
             'logo_url' => $logo_url,
         ]);
@@ -501,11 +504,11 @@ class AdminMenu
 
     public function enqueue_admin_assets($hook_suffix)
     {
-        if (!in_array($hook_suffix, ['wp-org_page_wp-org-fields', 'wp-org_page_wp-org-settings'], true)) {
+        if (!in_array($hook_suffix, ['toplevel_page_wp-org', 'wp-org_page_wp-org-fields', 'wp-org_page_wp-org-settings'], true)) {
             return;
         }
 
-        wp_add_inline_style('wp-admin', '.wp-org-fields-table input[type="text"],.wp-org-fields-table select,.wp-org-fields-table textarea,.wp-org-bank-table input[type="text"]{width:100%}.wp-org-fields-table textarea{min-height:64px}.wp-org-field-row-disabled{opacity:.6}');
+        wp_add_inline_style('wp-admin', '.wp-org-admin{max-width:1380px;margin-top:18px}.wp-org-admin-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:0 0 18px;padding:24px 28px;border:1px solid #d8e1ea;border-radius:20px;background:linear-gradient(135deg,#f8fbff 0%,#eef5fb 100%);box-shadow:0 14px 34px rgba(17,52,82,.06)}.wp-org-admin-hero h1{margin:0 0 6px;font-size:28px;line-height:1.15}.wp-org-admin-hero p{margin:0;color:#536170;max-width:720px}.wp-org-admin-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}.wp-org-admin-stat,.wp-org-admin-card{background:#fff;border:1px solid #d8e1ea;border-radius:18px;box-shadow:0 10px 24px rgba(17,52,82,.05)}.wp-org-admin-stat{padding:18px 20px}.wp-org-admin-stat strong{display:block;margin-top:8px;font-size:28px;line-height:1.1;color:#0f3d5e}.wp-org-admin-stat-label{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b}.wp-org-admin-card{padding:22px 24px}.wp-org-admin-table-card{overflow:auto;padding:0}.wp-org-admin-table{border:none}.wp-org-admin-table thead th{padding:14px 16px;background:#f7fafc;border-bottom:1px solid #d8e1ea;color:#334155}.wp-org-admin-table tbody td{padding:16px;vertical-align:top}.wp-org-admin-inline-form{display:grid;gap:10px}.wp-org-admin-inline-form select,.wp-org-admin-inline-form input[type=\"text\"],.wp-org-fields-table input[type=\"text\"],.wp-org-fields-table select,.wp-org-fields-table textarea,.wp-org-bank-table input[type=\"text\"]{width:100%;max-width:none}.wp-org-fields-table textarea{min-height:64px}.wp-org-field-row-disabled{opacity:.6}.wp-org-admin-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.2}.wp-org-admin-badge-approved,.wp-org-admin-badge-premium-active{background:#dcfce7;color:#166534}.wp-org-admin-badge-pending,.wp-org-admin-badge-premium-pending{background:#fef3c7;color:#92400e}.wp-org-admin-badge-rejected,.wp-org-admin-badge-premium-rejected{background:#fee2e2;color:#991b1b}.wp-org-admin-badge-premium-none{background:#e2e8f0;color:#334155}.wp-org-admin-subtle{color:#64748b}.wp-org-admin-link{text-decoration:none}.wp-org-admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;padding:0;border-bottom:0}.wp-org-admin-tabs .nav-tab{margin:0;border:1px solid #d8e1ea;border-radius:999px;background:#fff;color:#334155}.wp-org-admin-tabs .nav-tab-active{background:#0f3d5e;border-color:#0f3d5e;color:#fff}.wp-org-admin-docs{max-width:980px}.wp-org-admin .form-table th{width:220px;color:#0f172a}.wp-org-admin .form-table td,.wp-org-admin .form-table th{padding-top:18px;padding-bottom:18px}.wp-org-admin .button.button-secondary,.wp-org-admin .button{border-radius:10px}.wp-org-admin .button-primary{border-radius:10px;background:#0f3d5e;border-color:#0f3d5e}.wp-org-admin .submit{margin-bottom:0;padding-bottom:0}.wp-org-admin-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.48);z-index:100000}.wp-org-admin-modal.is-open{display:flex}.wp-org-admin-modal-dialog{width:min(640px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:24px;border-radius:20px;background:#fff;box-shadow:0 28px 70px rgba(15,23,42,.28)}.wp-org-admin-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.wp-org-admin-modal-header h3{margin:0 0 4px;font-size:22px;line-height:1.2}.wp-org-admin-modal-close{border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;color:#64748b}.wp-org-admin-modal-grid{display:grid;gap:16px}.wp-org-admin-modal-section{padding:18px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}.wp-org-admin-modal-section h4{margin:0 0 12px;font-size:15px}.wp-org-admin-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.wp-org-admin-open-modal{white-space:nowrap}@media (max-width:960px){.wp-org-admin-hero{padding:20px}.wp-org-admin-card{padding:18px}.wp-org-admin .form-table,.wp-org-admin .form-table tbody,.wp-org-admin .form-table tr,.wp-org-admin .form-table th,.wp-org-admin .form-table td{display:block;width:100%}.wp-org-admin .form-table th{padding-bottom:6px}.wp-org-admin .form-table td{padding-top:0}.wp-org-admin-modal{padding:14px}.wp-org-admin-modal-dialog{padding:18px}}');
         wp_add_inline_script('jquery-core', <<<'JS'
 jQuery(function($){
     function syncRowState($row) {
@@ -548,9 +551,80 @@ jQuery(function($){
         $row.find('.wp-org-bank-delete').val('1');
         $row.remove();
     });
+
+    $(document).on('click', '.wp-org-admin-open-modal', function() {
+        var target = $(this).data('modal-target');
+        $('#' + target).addClass('is-open').attr('aria-hidden', 'false');
+        $('body').addClass('wp-org-modal-open');
+    });
+
+    $(document).on('click', '.wp-org-admin-modal-close', function() {
+        $(this).closest('.wp-org-admin-modal').removeClass('is-open').attr('aria-hidden', 'true');
+        $('body').removeClass('wp-org-modal-open');
+    });
+
+    $(document).on('click', '.wp-org-admin-modal', function(e) {
+        if ($(e.target).is('.wp-org-admin-modal')) {
+            $(this).removeClass('is-open').attr('aria-hidden', 'true');
+            $('body').removeClass('wp-org-modal-open');
+        }
+    });
+
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape') {
+            $('.wp-org-admin-modal.is-open').removeClass('is-open').attr('aria-hidden', 'true');
+            $('body').removeClass('wp-org-modal-open');
+        }
+    });
 });
 JS
 );
+    }
+
+    private function render_member_action_modal($user, $statuses, $status, $note, $premium_statuses, $premium_status)
+    {
+        $modal_id = 'wp-org-member-modal-' . $user->ID;
+        $member_number = $this->get_member_number($user->ID);
+        $premium_note = (string) get_user_meta($user->ID, 'wp_org_premium_note', true);
+        $html = '<div id="' . esc_attr($modal_id) . '" class="wp-org-admin-modal" aria-hidden="true"><div class="wp-org-admin-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="' . esc_attr($modal_id) . '-title">';
+        $html .= '<div class="wp-org-admin-modal-header"><div><h3 id="' . esc_attr($modal_id) . '-title">Kelola ' . esc_html($user->display_name) . '</h3><p class="wp-org-admin-subtle" style="margin:0">Nomor anggota: <code>' . esc_html($member_number) . '</code><br>' . esc_html($user->user_email) . '</p></div><button type="button" class="wp-org-admin-modal-close" aria-label="Tutup">&times;</button></div>';
+        $html .= '<div class="wp-org-admin-modal-grid">';
+        $html .= '<div class="wp-org-admin-modal-section"><h4>Status Anggota</h4><form class="wp-org-admin-inline-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        ob_start();
+        wp_nonce_field('wp_org_update_member_status_' . $user->ID);
+        $html .= (string) ob_get_clean();
+        $html .= '<input type="hidden" name="action" value="wp_org_update_member_status"><input type="hidden" name="user_id" value="' . esc_attr((string) $user->ID) . '"><select name="status">';
+        foreach ($statuses as $key => $label) {
+            $html .= '<option value="' . esc_attr($key) . '"' . selected($status, $key, false) . '>' . esc_html($label) . '</option>';
+        }
+        $html .= '</select><input type="text" name="admin_note" value="' . esc_attr($note) . '" placeholder="Catatan internal">';
+        $html .= '<div class="wp-org-admin-modal-actions">';
+        ob_start();
+        submit_button('Simpan Status', 'secondary', 'submit', false);
+        $html .= (string) ob_get_clean();
+        $html .= '</div></form></div>';
+        $html .= '<div class="wp-org-admin-modal-section"><h4>Member Premium</h4><form class="wp-org-admin-inline-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        ob_start();
+        wp_nonce_field('wp_org_update_premium_status_' . $user->ID);
+        $html .= (string) ob_get_clean();
+        $html .= '<input type="hidden" name="action" value="wp_org_update_premium_status"><input type="hidden" name="user_id" value="' . esc_attr((string) $user->ID) . '"><select name="premium_status">';
+        foreach ($premium_statuses as $key => $label) {
+            $html .= '<option value="' . esc_attr($key) . '"' . selected($premium_status, $key, false) . '>' . esc_html($label) . '</option>';
+        }
+        $html .= '</select><input type="text" name="premium_note" value="' . esc_attr($premium_note) . '" placeholder="Catatan premium">';
+        $html .= '<div class="wp-org-admin-modal-actions">';
+        ob_start();
+        submit_button('Update Premium', 'secondary', 'submit', false);
+        $html .= (string) ob_get_clean();
+        $html .= '</div></form></div>';
+        $html .= '</div></div></div>';
+
+        return $html;
+    }
+
+    private function get_member_number($user_id)
+    {
+        return MemberData::get_member_number($user_id);
     }
 
     private function render_field_row($index, $field)

@@ -92,11 +92,7 @@ class Profile
                 echo '<h3>Kartu Anggota Premium</h3>';
                 echo '<p>Kartu anggota Anda sudah aktif dan dapat diunduh.</p>';
                 echo '<div class="wp-org-member-card-preview-wrap" style="margin-top:16px">';
-                echo '<iframe src="' . esc_url($this->get_member_card_pdf_url()) . '" title="Preview kartu anggota premium" style="width:100%;height:760px;border:1px solid #d7e3ee;border-radius:20px;background:#fff"></iframe>';
-                echo '</div>';
-                echo '<div class="wp-org-member-card-actions">';
-                echo '<a class="wp-org-button" href="' . esc_url($this->get_member_card_pdf_url()) . '" target="_blank" rel="noopener">Preview PDF</a>';
-                echo '<a class="wp-org-button" href="' . esc_url($this->get_member_card_pdf_download_url()) . '">Download PDF</a>';
+                echo '<iframe src="' . esc_url($this->get_member_card_pdf_url()) . '" title="Preview kartu anggota premium" style="width:100%;height:270px;border:1px solid #d7e3ee;border-radius:20px;background:#fff"></iframe>';
                 echo '</div>';
                 echo '</div>';
             }
@@ -243,7 +239,7 @@ class Profile
         }
 
         $member_card_settings = get_option('wp_org_member_card_settings', []);
-        $member_number = 'ORG-' . str_pad((string) $user_id, 6, '0', STR_PAD_LEFT);
+        $member_number = MemberData::get_member_number($user_id);
         $region = trim(get_user_meta($user_id, 'wp_org_city_name', true) . ', ' . get_user_meta($user_id, 'wp_org_province_name', true), ', ');
         $issued_at = get_user_meta($user_id, 'wp_org_premium_requested_at', true);
         if (!$issued_at) {
@@ -349,34 +345,58 @@ class Profile
         $logo = $logo_data_uri !== '' ? '<img class="logo" src="' . $logo_data_uri . '" alt="Logo organisasi">' : '';
 
         return '<!doctype html><html><head><meta charset="UTF-8"><style>'
-            . '@page{size:85.6mm 53.98mm;margin:0}body{margin:0;font-family:DejaVu Sans,Arial,sans-serif}'
-            . '.card{position:relative;width:85.6mm;height:53.98mm;overflow:hidden;color:#fff;background:linear-gradient(135deg,#0f3d5e,#135e96)}'
-            . '.bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.22;' . $background_style . '}'
-            . '.overlay{position:absolute;inset:0;background:rgba(0,0,0,.42)}'
-            . '.inner{position:relative;display:flex;gap:3mm;padding:3mm 3.5mm;width:100%;height:100%;box-sizing:border-box;overflow:hidden}'
-            . '.logo{width:9mm;height:9mm;object-fit:contain;background:rgba(255,255,255,.12);border-radius:1.6mm;padding:1.2mm;flex:0 0 auto}'
-            . '.copy{flex:1}'
-            . '.org{margin:0 0 1mm;font-size:5.5pt;letter-spacing:.8px;text-transform:uppercase;opacity:.9}'
-            . '.title{margin:0 0 1.5mm;font-size:9.5pt;font-weight:700;letter-spacing:.1px;line-height:1.02}'
-            . '.grid{display:grid;grid-template-columns:minmax(0,1fr) 19mm;gap:1.5mm;align-items:end;min-width:0}'
-            . '.label{font-size:4pt;line-height:1.1;opacity:.8;text-transform:uppercase;letter-spacing:.4px}'
-            . '.number{font-size:7pt;font-weight:700;margin-top:.8mm;line-height:1.1}'
-            . '.name{font-size:8.5pt;font-weight:700;line-height:1.05;margin-top:.8mm;word-break:break-word}'
-            . '.region{font-size:6pt;line-height:1.15;margin-top:.8mm;word-break:break-word}'
-            . '.meta{background:rgba(255,255,255,.16);border-radius:2.2mm;padding:1.8mm;align-self:end;min-width:0}'
-            . '.meta-value{font-size:6pt;font-weight:700;margin-top:.8mm;line-height:1.1;word-break:break-word}'
-            . '</style></head><body><div class="card"><div class="bg"></div><div class="overlay"></div><div class="inner">'
-            . $logo
-            . '<div class="copy">'
+            . '@page{size:85.6mm 53.98mm;margin:0}'
+            . 'body{margin:0;font-family:DejaVu Sans,Arial,sans-serif}'
+            . '.card{position:relative;width:85.6mm;height:53.98mm;overflow:hidden;color:#fff;background:#135e96;background-image:linear-gradient(135deg,#0f3d5e 0%,#135e96 58%,#2e84be 100%)}'
+            . '.bg{position:absolute;top:0;right:0;bottom:0;left:0;background-size:cover;background-position:center;opacity:.20;' . $background_style . '}'
+            . '.shade{position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(6,24,38,.28)}'
+            . '.ring-top{position:absolute;top:-10mm;right:-8mm;width:34mm;height:34mm;border-radius:17mm;background:rgba(255,255,255,.08)}'
+            . '.ring-bottom{position:absolute;bottom:-14mm;left:-10mm;width:42mm;height:42mm;border-radius:21mm;background:rgba(255,255,255,.06)}'
+            . '.inner{position:relative;padding:3.5mm;z-index:2}'
+            . '.header{height:12mm}'
+            . '.logo-wrap{float:left;width:12mm;height:12mm}'
+            . '.logo{display:block;width:9mm;height:9mm;object-fit:contain;background:rgba(255,255,255,.12);border:0.3mm solid rgba(255,255,255,.18);border-radius:1.8mm;padding:1.2mm}'
+            . '.org{margin:0 0 0 13.5mm;font-size:5.2pt;line-height:1.2;letter-spacing:.7px;text-transform:uppercase;opacity:.92}'
+            . '.title{margin:1.2mm 0 0 13.5mm;font-size:9.6pt;line-height:1.02;font-weight:700}'
+            . '.content{margin-top:2mm}'
+            . '.left{float:left;width:47mm}'
+            . '.right{float:right;width:24mm}'
+            . '.label{font-size:4.1pt;line-height:1.15;text-transform:uppercase;letter-spacing:.45px;color:#d8efff}'
+            . '.value{color:#fff;word-wrap:break-word}'
+            . '.number{font-size:7.8pt;font-weight:700;line-height:1.15;margin-top:.6mm}'
+            . '.name{font-size:11.8pt;font-weight:700;line-height:1.02;margin-top:.6mm}'
+            . '.region{font-size:6.1pt;line-height:1.2;margin-top:.6mm}'
+            . '.spacer{height:2.1mm}'
+            . '.meta{background:rgba(255,255,255,.14);border:0.3mm solid rgba(255,255,255,.14);border-radius:2mm;padding:2.1mm 2.2mm}'
+            . '.meta .value{font-size:6.3pt;font-weight:700;line-height:1.15;margin-top:.7mm}'
+            . '.status{margin-top:3mm;padding-top:2.3mm;border-top:0.3mm solid rgba(255,255,255,.18)}'
+            . '.footer{position:absolute;right:3.5mm;bottom:2.6mm;font-size:4pt;letter-spacing:.45px;text-transform:uppercase;color:rgba(255,255,255,.82)}'
+            . '.clearfix{clear:both}'
+            . '</style></head><body><div class="card"><div class="bg"></div><div class="shade"></div><div class="ring-top"></div><div class="ring-bottom"></div><div class="inner">'
+            . '<div class="header">'
+            . '<div class="logo-wrap">' . $logo . '</div>'
             . '<p class="org">' . esc_html($data['organization_name']) . '</p>'
-            . '<div class="grid"><div>'
-            . '<div class="number">' . esc_html($data['number']) . '</div>'
-            . '<div class="name">' . esc_html($data['name']) . '</div>'
-            . '<div class="region">' . esc_html($data['region']) . '</div>'
-            . '</div><div class="meta">'
-            . '<div class="label">Berlaku Sejak</div><div class="meta-value">' . esc_html($data['issued_at']) . '</div>'
-            . '<div class="label" style="margin-top:16px">Status</div><div class="meta-value">AKTIF</div>'
-            . '</div></div></div></div></div></body></html>';
+            . '<div class="title">KARTU ANGGOTA PREMIUM</div>'
+            . '</div>'
+            . '<div class="content">'
+            . '<div class="left">'
+            . '<div class="label">Nomor Anggota</div>'
+            . '<div class="value number">' . esc_html($data['number']) . '</div>'
+            . '<div class="spacer"></div>'
+            . '<div class="label">Nama Anggota</div>'
+            . '<div class="value name">' . esc_html($data['name']) . '</div>'
+            . '<div class="spacer"></div>'
+            . '<div class="label">Wilayah</div>'
+            . '<div class="value region">' . esc_html($data['region']) . '</div>'
+            . '</div>'
+            . '<div class="right"><div class="meta">'
+            . '<div class="label">Berlaku Sejak</div><div class="value">' . esc_html($data['issued_at']) . '</div>'
+            . '<div class="status"><div class="label">Status</div><div class="value">AKTIF</div></div>'
+            . '</div></div>'
+            . '<div class="clearfix"></div>'
+            . '</div>'
+            . '<div class="footer">Verified Member</div>'
+            . '</div></div></body></html>';
     }
 
     private function get_member_card_pdf_url()
