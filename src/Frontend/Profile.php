@@ -37,7 +37,7 @@ class Profile
     public function render_shortcode()
     {
         if (!is_user_logged_in()) {
-            return '<div class="wp-org-card"><p>Silakan login untuk melihat profil anggota.</p></div>';
+            return $this->render_guest_tabs();
         }
 
         $user_id = get_current_user_id();
@@ -94,7 +94,7 @@ class Profile
                 wp_nonce_field('wp_org_premium_request', 'wp_org_premium_nonce');
                 echo '<div class="wp-org-field"><label for="wp_org_premium_reference">Referensi Pembayaran</label><input id="wp_org_premium_reference" name="premium_reference" type="text" value="' . esc_attr((string) $premium_reference) . '" placeholder="Contoh: Transfer 10 Juni 2026 / 123456"></div>';
                 echo '<div class="wp-org-field"><label for="wp_org_premium_proof">Foto Bukti Pembayaran</label><input id="wp_org_premium_proof" name="premium_proof" type="file" accept="image/jpeg,image/png,image/webp" required></div>';
-                echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_premium_submit" value="1">Kirim Pengajuan Premium</button></div>';
+                echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_premium_submit" value="1">Kirim Pengajuan</button></div>';
                 echo '</form></div>';
             }
         } else {
@@ -108,6 +108,33 @@ class Profile
 
             echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_profile_submit" value="1">Simpan Profil</button></div>';
             echo '</form>';
+        }
+
+        echo '</div>';
+
+        return (string) ob_get_clean();
+    }
+
+    private function render_guest_tabs()
+    {
+        $active_tab = isset($_GET['profile_tab']) ? sanitize_key(wp_unslash($_GET['profile_tab'])) : 'login';
+        if (!in_array($active_tab, ['login', 'register'], true)) {
+            $active_tab = 'login';
+        }
+
+        $auth = new Auth();
+
+        ob_start();
+        echo '<div class="wp-org-card"><h2>Akses Anggota</h2>';
+        echo '<nav class="wp-org-tabs">';
+        echo '<a class="wp-org-tab ' . ($active_tab === 'login' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'login')) . '">Login</a>';
+        echo '<a class="wp-org-tab ' . ($active_tab === 'register' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'register')) . '">Register</a>';
+        echo '</nav>';
+
+        if ($active_tab === 'register') {
+            echo $auth->render_register_shortcode();
+        } else {
+            echo $auth->render_login_shortcode();
         }
 
         echo '</div>';

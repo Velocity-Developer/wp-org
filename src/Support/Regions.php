@@ -5,37 +5,9 @@ namespace WpOrg\Support;
 class Regions
 {
     /**
-     * @var array<string, array<int, array<string, mixed>>>
+     * @var array<string, array<int, array<string, string>>>|null
      */
-    private $regions = [
-        'provinces' => [
-            ['code' => '31', 'name' => 'DKI Jakarta'],
-            ['code' => '32', 'name' => 'Jawa Barat'],
-            ['code' => '35', 'name' => 'Jawa Timur'],
-        ],
-        'cities' => [
-            ['code' => '31.01', 'province_code' => '31', 'name' => 'Kota Jakarta Pusat'],
-            ['code' => '31.02', 'province_code' => '31', 'name' => 'Kota Jakarta Utara'],
-            ['code' => '32.01', 'province_code' => '32', 'name' => 'Kota Bandung'],
-            ['code' => '32.02', 'province_code' => '32', 'name' => 'Kabupaten Bekasi'],
-            ['code' => '35.01', 'province_code' => '35', 'name' => 'Kota Surabaya'],
-            ['code' => '35.02', 'province_code' => '35', 'name' => 'Kabupaten Sidoarjo'],
-        ],
-        'districts' => [
-            ['code' => '31.01.01', 'city_code' => '31.01', 'name' => 'Gambir'],
-            ['code' => '31.01.02', 'city_code' => '31.01', 'name' => 'Tanah Abang'],
-            ['code' => '31.02.01', 'city_code' => '31.02', 'name' => 'Koja'],
-            ['code' => '31.02.02', 'city_code' => '31.02', 'name' => 'Cilincing'],
-            ['code' => '32.01.01', 'city_code' => '32.01', 'name' => 'Coblong'],
-            ['code' => '32.01.02', 'city_code' => '32.01', 'name' => 'Lengkong'],
-            ['code' => '32.02.01', 'city_code' => '32.02', 'name' => 'Cikarang Barat'],
-            ['code' => '32.02.02', 'city_code' => '32.02', 'name' => 'Tambun Selatan'],
-            ['code' => '35.01.01', 'city_code' => '35.01', 'name' => 'Tegalsari'],
-            ['code' => '35.01.02', 'city_code' => '35.01', 'name' => 'Wonokromo'],
-            ['code' => '35.02.01', 'city_code' => '35.02', 'name' => 'Buduran'],
-            ['code' => '35.02.02', 'city_code' => '35.02', 'name' => 'Waru'],
-        ],
-    ];
+    private $regions;
 
     public function register()
     {
@@ -64,7 +36,9 @@ class Regions
      */
     public function get_provinces()
     {
-        return $this->regions['provinces'];
+        $regions = $this->get_regions();
+
+        return $regions['provinces'];
     }
 
     /**
@@ -72,7 +46,9 @@ class Regions
      */
     public function get_cities($province_code)
     {
-        return array_values(array_filter($this->regions['cities'], static function ($city) use ($province_code) {
+        $regions = $this->get_regions();
+
+        return array_values(array_filter($regions['cities'], static function ($city) use ($province_code) {
             return $city['province_code'] === $province_code;
         }));
     }
@@ -82,7 +58,9 @@ class Regions
      */
     public function get_districts($city_code)
     {
-        return array_values(array_filter($this->regions['districts'], static function ($district) use ($city_code) {
+        $regions = $this->get_regions();
+
+        return array_values(array_filter($regions['districts'], static function ($district) use ($city_code) {
             return $district['city_code'] === $city_code;
         }));
     }
@@ -102,9 +80,45 @@ class Regions
         return $this->find_name('districts', 'code', $code);
     }
 
+    /**
+     * @return array<string, array<int, array<string, string>>>
+     */
+    private function get_regions()
+    {
+        if ($this->regions !== null) {
+            return $this->regions;
+        }
+
+        $path = WP_ORG_PATH . 'data/regions.json';
+        if (!file_exists($path)) {
+            $this->regions = [
+                'provinces' => [],
+                'cities' => [],
+                'districts' => [],
+            ];
+
+            return $this->regions;
+        }
+
+        $decoded = json_decode((string) file_get_contents($path), true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        $this->regions = [
+            'provinces' => isset($decoded['provinces']) && is_array($decoded['provinces']) ? $decoded['provinces'] : [],
+            'cities' => isset($decoded['cities']) && is_array($decoded['cities']) ? $decoded['cities'] : [],
+            'districts' => isset($decoded['districts']) && is_array($decoded['districts']) ? $decoded['districts'] : [],
+        ];
+
+        return $this->regions;
+    }
+
     private function find_name($bucket, $key, $value)
     {
-        foreach ($this->regions[$bucket] as $item) {
+        $regions = $this->get_regions();
+
+        foreach ($regions[$bucket] as $item) {
             if ($item[$key] === $value) {
                 return $item['name'];
             }

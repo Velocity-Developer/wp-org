@@ -78,8 +78,8 @@ class Auth
         $this->output_flash();
         echo '<form class="wp-org-grid" method="post">';
         wp_nonce_field('wp_org_login_action', 'wp_org_login_nonce');
-        $this->render_field('Username atau Email', 'log', 'text', true, false);
-        $this->render_field('Password', 'pwd', 'password', true, false);
+        echo $this->render_field('Username atau Email', 'log', 'text', true, false);
+        echo $this->render_field('Password', 'pwd', 'password', true, false);
         echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_login_submit" value="1">Login</button></div>';
         echo '</form></div>';
 

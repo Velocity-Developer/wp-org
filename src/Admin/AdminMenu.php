@@ -132,6 +132,7 @@ class AdminMenu
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=general')) . '" class="nav-tab ' . ($active_tab === 'general' ? 'nav-tab-active' : '') . '">Umum</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=data')) . '" class="nav-tab ' . ($active_tab === 'data' ? 'nav-tab-active' : '') . '">Data</a>';
         echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=payment-banks')) . '" class="nav-tab ' . ($active_tab === 'payment-banks' ? 'nav-tab-active' : '') . '">Bank Pembayaran</a>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=wp-org-settings&tab=documentation')) . '" class="nav-tab ' . ($active_tab === 'documentation' ? 'nav-tab-active' : '') . '">Dokumentasi</a>';
         echo '</nav>';
 
         if ($active_tab === 'data') {
@@ -169,6 +170,52 @@ class AdminMenu
             echo '<script type="text/html" id="tmpl-wp-org-bank-row">' . $this->render_bank_row('__index__', ['bank_name' => '', 'account_name' => '', 'account_number' => '', 'enabled' => 1]) . '</script>';
             submit_button('Simpan Bank Pembayaran');
             echo '</form></div>';
+            return;
+        }
+
+        if ($active_tab === 'documentation') {
+            echo '<div class="card" style="max-width:960px;padding:20px 24px">';
+            echo '<h2>Cara Penggunaan Plugin WP Org</h2>';
+            echo '<p>Plugin ini dipakai untuk registrasi anggota, login frontend, pengelolaan profil anggota, daftar anggota, dan pengajuan member premium.</p>';
+
+            echo '<h3>1. Setup Awal</h3>';
+            echo '<ol>';
+            echo '<li>Buka menu <strong>WP Org &gt; Field Form</strong> untuk mengatur field registrasi yang aktif.</li>';
+            echo '<li>Buka menu <strong>WP Org &gt; Pengaturan &gt; Umum</strong> untuk mengatur approval admin, visibilitas daftar anggota, dan redirect login.</li>';
+            echo '<li>Jika memakai premium membership, buka tab <strong>Bank Pembayaran</strong> untuk mengisi biaya premium dan rekening tujuan transfer.</li>';
+            echo '<li>Captcha mengikuti pengaturan plugin <strong>velocity-addons</strong>.</li>';
+            echo '</ol>';
+
+            echo '<h3>2. Shortcode Frontend</h3>';
+            echo '<table class="widefat striped"><thead><tr><th>Shortcode</th><th>Fungsi</th></tr></thead><tbody>';
+            echo '<tr><td><code>[org_register]</code></td><td>Menampilkan form pendaftaran anggota baru.</td></tr>';
+            echo '<tr><td><code>[org_login]</code></td><td>Menampilkan form login anggota.</td></tr>';
+            echo '<tr><td><code>[org_members]</code></td><td>Menampilkan daftar anggota sesuai pengaturan akses.</td></tr>';
+            echo '<tr><td><code>[org_profile]</code></td><td>Menampilkan halaman profil anggota beserta tab premium.</td></tr>';
+            echo '</tbody></table>';
+
+            echo '<h3>3. Alur Registrasi Anggota</h3>';
+            echo '<ol>';
+            echo '<li>Pengunjung mengisi form dari shortcode <code>[org_register]</code>.</li>';
+            echo '<li>Sistem membuat akun WordPress dengan role <code>org_member</code>.</li>';
+            echo '<li>Status anggota akan menjadi <code>pending</code> atau <code>approved</code> sesuai pengaturan.</li>';
+            echo '<li>Admin memverifikasi anggota dari menu <strong>WP Org &gt; Anggota</strong>.</li>';
+            echo '</ol>';
+
+            echo '<h3>4. Alur Member Premium</h3>';
+            echo '<ol>';
+            echo '<li>Member login lalu buka halaman profil dari shortcode <code>[org_profile]</code>.</li>';
+            echo '<li>Pada tab <strong>Member Premium</strong>, member melihat biaya premium dan daftar rekening pembayaran aktif.</li>';
+            echo '<li>Member transfer, mengisi referensi pembayaran, lalu upload foto bukti pembayaran.</li>';
+            echo '<li>Admin memeriksa pengajuan premium dari menu <strong>WP Org &gt; Anggota</strong> lalu update status premium menjadi <code>active</code>, <code>pending</code>, atau <code>rejected</code>.</li>';
+            echo '</ol>';
+
+            echo '<h3>5. Seeder Data</h3>';
+            echo '<p>Tab <strong>Data</strong> di pengaturan menyediakan seeder anggota contoh untuk pengujian awal.</p>';
+
+            echo '<h3>6. Data Wilayah</h3>';
+            echo '<p>Provinsi, kabupaten/kota, dan kecamatan memakai dataset lokal dari referensi <code>cahyadsn/wilayah</code>.</p>';
+            echo '</div></div>';
             return;
         }
 
