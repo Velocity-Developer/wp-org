@@ -64,7 +64,7 @@ class Members
                     $verified_badge = '<small class="wp-org-verified-badge" aria-label="Verified">&#10003;</small>';
                 }
 
-                echo '<tr><td>' . esc_html($user->display_name) . $verified_badge . '</td><td>' . esc_html($user->user_email) . '</td><td>' . esc_html($region ?: '-') . '</td></tr>';
+                echo '<tr><td>' . esc_html($user->display_name) . $verified_badge . '</td><td>' . esc_html($this->mask_email($user->user_email)) . '</td><td>' . esc_html($region ?: '-') . '</td></tr>';
             }
         }
 
@@ -98,5 +98,25 @@ class Members
         asort($cities);
 
         return $cities;
+    }
+
+    private function mask_email($email)
+    {
+        $email = sanitize_email((string) $email);
+
+        if ($email === '' || strpos($email, '@') === false) {
+            return '***';
+        }
+
+        [$local, $domain] = explode('@', $email, 2);
+        $local_length = strlen($local);
+
+        if ($local_length <= 2) {
+            $masked_local = substr($local, 0, 1) . '***';
+        } else {
+            $masked_local = substr($local, 0, 2) . str_repeat('*', max(3, $local_length - 2));
+        }
+
+        return $masked_local . '@' . $domain;
     }
 }

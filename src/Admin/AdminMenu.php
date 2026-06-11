@@ -33,14 +33,44 @@ class AdminMenu
             wp_die('Akses ditolak.');
         }
 
-        $users = get_users([
+        $search = isset($_GET['member_search']) ? sanitize_text_field(wp_unslash($_GET['member_search'])) : '';
+        $member_status_filter = isset($_GET['member_status']) ? sanitize_key(wp_unslash($_GET['member_status'])) : '';
+        $premium_status_filter = isset($_GET['premium_status']) ? sanitize_key(wp_unslash($_GET['premium_status'])) : '';
+        $statuses = MemberData::get_all_statuses();
+        $premium_statuses = MemberData::get_premium_statuses();
+        $meta_query = [];
+
+        if ($member_status_filter !== '' && isset($statuses[$member_status_filter])) {
+            $meta_query[] = [
+                'key' => 'wp_org_status',
+                'value' => $member_status_filter,
+            ];
+        }
+
+        if ($premium_status_filter !== '' && isset($premium_statuses[$premium_status_filter])) {
+            $meta_query[] = [
+                'key' => 'wp_org_premium_status',
+                'value' => $premium_status_filter,
+            ];
+        }
+
+        $user_args = [
             'role__in' => ['org_member', 'org_admin'],
             'number' => 100,
             'orderby' => 'registered',
             'order' => 'DESC',
-        ]);
-        $statuses = MemberData::get_all_statuses();
-        $premium_statuses = MemberData::get_premium_statuses();
+        ];
+
+        if ($search !== '') {
+            $user_args['search'] = '*' . $search . '*';
+            $user_args['search_columns'] = ['user_login', 'user_email', 'display_name'];
+        }
+
+        if ($meta_query !== []) {
+            $user_args['meta_query'] = $meta_query;
+        }
+
+        $users = get_users($user_args);
         $status_totals = array_fill_keys(array_keys($statuses), 0);
         $premium_totals = array_fill_keys(array_keys($premium_statuses), 0);
 
@@ -65,6 +95,24 @@ class AdminMenu
         echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Pending</span><strong>' . esc_html((string) ($status_totals['pending'] ?? 0)) . '</strong></div>';
         echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Premium Aktif</span><strong>' . esc_html((string) ($premium_totals['active'] ?? 0)) . '</strong></div>';
         echo '</div>';
+        echo '<div class="wp-org-admin-card">';
+        echo '<form method="get" class="wp-org-admin-filters">';
+        echo '<input type="hidden" name="page" value="wp-org">';
+        echo '<div class="wp-org-admin-filters-grid">';
+        echo '<label class="wp-org-admin-filter-field"><span>Cari Anggota</span><input type="text" name="member_search" value="' . esc_attr($search) . '" placeholder="Nama, email, atau username"></label>';
+        echo '<label class="wp-org-admin-filter-field"><span>Status Anggota</span><select name="member_status"><option value="">Semua status</option>';
+        foreach ($statuses as $status_key => $status_label) {
+            echo '<option value="' . esc_attr($status_key) . '"' . selected($member_status_filter, $status_key, false) . '>' . esc_html($status_label) . '</option>';
+        }
+        echo '</select></label>';
+        echo '<label class="wp-org-admin-filter-field"><span>Status Premium</span><select name="premium_status"><option value="">Semua premium</option>';
+        foreach ($premium_statuses as $premium_key => $premium_label) {
+            echo '<option value="' . esc_attr($premium_key) . '"' . selected($premium_status_filter, $premium_key, false) . '>' . esc_html($premium_label) . '</option>';
+        }
+        echo '</select></label>';
+        echo '</div>';
+        echo '<div class="wp-org-admin-filter-actions"><button type="submit" class="button button-primary">Filter</button><a class="button button-secondary" href="' . esc_url(admin_url('admin.php?page=wp-org')) . '">Reset</a></div>';
+        echo '</form></div>';
         echo '<div class="wp-org-admin-card wp-org-admin-table-card"><table class="widefat striped wp-org-admin-table"><thead><tr><th>Nama</th><th>No. Anggota</th><th>Email</th><th>Status</th><th>Premium</th><th>Tanggal Daftar</th><th>Catatan Admin</th><th>Aksi</th></tr></thead><tbody>';
 
         if (!$users) {
