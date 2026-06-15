@@ -14,6 +14,7 @@ class AdminMenu
         add_action('admin_post_wp_org_save_fields', [$this, 'handle_save_fields']);
         add_action('admin_post_wp_org_save_settings', [$this, 'handle_save_settings']);
         add_action('admin_post_wp_org_seed_members', [$this, 'handle_seed_members']);
+        add_action('admin_post_wp_org_import_subscribers', [$this, 'handle_import_subscribers']);
         add_action('admin_post_wp_org_save_payment_banks', [$this, 'handle_save_payment_banks']);
         add_action('admin_post_wp_org_save_member_card_settings', [$this, 'handle_save_member_card_settings']);
         add_action('admin_post_wp_org_update_premium_status', [$this, 'handle_update_premium_status']);
@@ -183,6 +184,11 @@ class AdminMenu
         $captcha_enabled = !empty($velocity_captcha['aktif']);
         $captcha_provider = sanitize_text_field($velocity_captcha['provider'] ?? 'google');
         $seed_message = isset($_GET['seeded']) ? absint($_GET['seeded']) : -1;
+        $imported_subscribers = isset($_GET['imported_subscribers']) ? absint($_GET['imported_subscribers']) : -1;
+        $subscriber_count = count(get_users([
+            'role' => 'subscriber',
+            'fields' => 'ids',
+        ]));
         $payment_banks = array_values((array) get_option('wp_org_payment_banks', []));
         $member_card = get_option('wp_org_member_card_settings', []);
 
@@ -199,6 +205,9 @@ class AdminMenu
             if ($seed_message >= 0) {
                 echo '<div class="notice notice-success is-dismissible"><p>Seeder anggota selesai. ' . esc_html((string) $seed_message) . ' anggota baru dibuat.</p></div>';
             }
+            if ($imported_subscribers >= 0) {
+                echo '<div class="notice notice-success is-dismissible"><p>Sinkronisasi selesai. ' . esc_html((string) $imported_subscribers) . ' subscriber baru ditambahkan sebagai anggota.</p></div>';
+            }
 
             echo '<div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
             wp_nonce_field('wp_org_seed_members');
@@ -208,6 +217,14 @@ class AdminMenu
             echo '<tr><th scope="row">Password Default</th><td><input class="regular-text" type="text" name="seed_password" value="Member123!"><p class="description">Password ini dipakai untuk seluruh akun hasil seeder.</p></td></tr>';
             echo '</tbody></table>';
             submit_button('Jalankan Seeder Anggota');
+            echo '</form></div>';
+            echo '<div class="wp-org-admin-card"><h2>Import Subscriber</h2>';
+            echo '<p>Tambahkan user WordPress dengan role <code>subscriber</code> ke daftar anggota tanpa menghapus role subscriber mereka.</p>';
+            echo '<p><strong>' . esc_html((string) $subscriber_count) . '</strong> user subscriber ditemukan. User yang sudah memiliki role <code>org_member</code> atau <code>org_admin</code> akan dilewati.</p>';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            wp_nonce_field('wp_org_import_subscribers');
+            echo '<input type="hidden" name="action" value="wp_org_import_subscribers">';
+            submit_button('Import / Update Subscriber', 'secondary');
             echo '</form></div>';
             echo '</div>';
 
@@ -347,6 +364,7 @@ class AdminMenu
 
         $fields = isset($_POST['fields']) ? (array) wp_unslash($_POST['fields']) : [];
         $sanitized = [];
+        $seen_keys = [];
 
         foreach ($fields as $field) {
             if (!empty($field['_delete'])) {
@@ -355,9 +373,12 @@ class AdminMenu
 
             $prepared = MemberData::normalize_field($field);
 
-            if ($prepared) {
-                $sanitized[] = $prepared;
+            if (!$prepared || isset($seen_keys[$prepared['key']])) {
+                continue;
             }
+
+            $seen_keys[$prepared['key']] = true;
+            $sanitized[] = $prepared;
         }
 
         update_option('wp_org_registration_fields', $sanitized);
@@ -540,6 +561,41 @@ class AdminMenu
         exit;
     }
 
+    public function handle_import_subscribers()
+    {
+        if (!current_user_can('wp_org_manage_settings') || !check_admin_referer('wp_org_import_subscribers')) {
+            wp_die('Permintaan tidak valid.');
+        }
+
+        $users = get_users([
+            'role' => 'subscriber',
+            'fields' => 'all',
+        ]);
+        $imported = 0;
+
+        foreach ($users as $user) {
+            if (in_array('org_member', (array) $user->roles, true) || in_array('org_admin', (array) $user->roles, true)) {
+                continue;
+            }
+
+            $user->add_role('org_member');
+            MemberData::update_status($user->ID, 'approved');
+
+            if (!get_user_meta($user->ID, 'wp_org_registered_at', true)) {
+                update_user_meta($user->ID, 'wp_org_registered_at', $user->user_registered);
+            }
+
+            if (!get_user_meta($user->ID, 'wp_org_full_name', true)) {
+                update_user_meta($user->ID, 'wp_org_full_name', $user->display_name);
+            }
+
+            $imported++;
+        }
+
+        wp_safe_redirect(admin_url('admin.php?page=wp-org-settings&tab=data&imported_subscribers=' . $imported));
+        exit;
+    }
+
     public function handle_update_premium_status()
     {
         $user_id = isset($_POST['user_id']) ? absint($_POST['user_id']) : 0;
@@ -590,7 +646,9 @@ jQuery(function($){
         var $labelInput = $row.find('.wp-org-field-label');
         var $keyInput = $row.find('.wp-org-field-key');
         var $keyPreview = $row.find('.wp-org-field-key-preview');
-        var key = slugifyFieldKey($labelInput.val());
+        var key = $row.attr('data-key-locked') === '1'
+            ? $keyInput.val()
+            : slugifyFieldKey($labelInput.val());
 
         $keyInput.val(key);
         $keyPreview.text(key ? 'ID: ' + key : 'ID akan dibuat otomatis dari label');
@@ -754,7 +812,7 @@ JS
 
         $row_class = !empty($field['enabled']) ? '' : ' class="wp-org-field-row-disabled"';
 
-        return '<tr' . $row_class . '>'
+        return '<tr' . $row_class . ' data-key-locked="' . ($field['key'] !== '' ? '1' : '0') . '">'
             . '<td class="wp-org-field-label-cell" data-label="Label"><input type="hidden" class="wp-org-field-delete" name="fields[' . esc_attr((string) $index) . '][_delete]" value="0"><input type="hidden" class="wp-org-field-key" name="fields[' . esc_attr((string) $index) . '][key]" value="' . esc_attr($field['key']) . '"><input type="text" class="wp-org-field-label" name="fields[' . esc_attr((string) $index) . '][label]" value="' . esc_attr($field['label']) . '" placeholder="Label field"><p class="wp-org-admin-field-id wp-org-field-key-preview">ID: ' . esc_html($field['key']) . '</p></td>'
             . '<td class="wp-org-field-type-cell" data-label="Tipe"><select class="wp-org-field-type" name="fields[' . esc_attr((string) $index) . '][type]">' . $type_options . '</select></td>'
             . '<td class="wp-org-field-options-cell" data-label="Opsi"><div class="wp-org-field-options-wrap"><textarea name="fields[' . esc_attr((string) $index) . '][options]" placeholder="Satu opsi per baris">' . esc_textarea($field['options'] ?? '') . '</textarea><p class="wp-org-admin-help">Dipakai untuk select, radio, dan checkbox</p></div></td>'

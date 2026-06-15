@@ -13,20 +13,20 @@ class MemberData
         }
 
         $normalized = [];
-        $has_member_photo = false;
+        $seen_keys = [];
 
         foreach ($fields as $field) {
             $prepared = self::normalize_field($field);
 
-            if ($prepared) {
-                if ($prepared['key'] === 'member_photo') {
-                    $has_member_photo = true;
-                }
-                $normalized[] = $prepared;
+            if (!$prepared || isset($seen_keys[$prepared['key']])) {
+                continue;
             }
+
+            $seen_keys[$prepared['key']] = true;
+            $normalized[] = $prepared;
         }
 
-        if (!$has_member_photo) {
+        if (!isset($seen_keys['member_photo'])) {
             array_unshift($normalized, [
                 'key' => 'member_photo',
                 'label' => 'Foto Anggota',
@@ -231,6 +231,10 @@ class MemberData
         $key = sanitize_key($field['key'] ?? '');
         $label = sanitize_text_field($field['label'] ?? '');
         $type = sanitize_key($field['type'] ?? 'text');
+
+        if ($key === 'foto_anggota' && $type === 'image' && sanitize_title($label) === 'foto-anggota') {
+            $key = 'member_photo';
+        }
 
         if ($key === '' || $label === '' || $type === '') {
             return null;
