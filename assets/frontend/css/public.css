@@ -49,6 +49,74 @@
     box-shadow: 0 0 0 4px rgba(19, 94, 150, 0.12);
 }
 
+.wp-org-password-field {
+    position: relative;
+}
+
+.wp-org-password-field input {
+    padding-right: 52px;
+}
+
+.wp-org-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #54708a;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.wp-org-password-toggle:hover {
+    background: rgba(19, 94, 150, 0.08);
+    color: #135e96;
+}
+
+.wp-org-password-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(19, 94, 150, 0.18);
+}
+
+.wp-org-password-toggle-icon {
+    position: relative;
+    width: 20px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-radius: 12px / 8px;
+}
+
+.wp-org-password-toggle-icon::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    transform: translate(-50%, -50%);
+}
+
+.wp-org-password-field.is-visible .wp-org-password-toggle-icon::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: 8px;
+    width: 2px;
+    height: 18px;
+    background: currentColor;
+    border-radius: 999px;
+    transform: rotate(-45deg);
+}
+
 .wp-org-actions {
     display: flex;
     gap: 12px;

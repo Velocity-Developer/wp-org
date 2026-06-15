@@ -47,6 +47,7 @@ class Auth
         $this->output_flash();
         echo '<form class="wp-org-grid wp-org-region-form" method="post" enctype="multipart/form-data">';
         wp_nonce_field('wp_org_register_action', 'wp_org_register_nonce');
+        echo '<input type="hidden" name="redirect_to" value="' . esc_url($this->get_register_redirect_url()) . '">';
         echo '<div class="wp-org-grid wp-org-grid-2">';
         $this->render_field('Nama Pengguna', 'username', 'text', true);
         $this->render_field('Email', 'email', 'email', true);
@@ -124,7 +125,7 @@ class Auth
 
         $message = $this->requires_approval() ? 'Pendaftaran berhasil dikirim dan menunggu approval admin.' : 'Pendaftaran berhasil. Anda dapat login.';
         $this->set_flash('success', $message);
-        wp_safe_redirect(wp_get_referer() ? wp_get_referer() : home_url('/'));
+        wp_safe_redirect($this->get_post_register_redirect_url());
         exit;
     }
 
@@ -170,7 +171,16 @@ class Auth
     {
         $value = isset($_POST[$name]) ? esc_attr(wp_unslash($_POST[$name])) : '';
         $required_attr = $required ? ' required' : '';
-        $html = '<div class="wp-org-field"><label for="' . esc_attr($name) . '">' . esc_html($label) . '</label><input id="' . esc_attr($name) . '" name="' . esc_attr($name) . '" type="' . esc_attr($type) . '" value="' . $value . '"' . $required_attr . '></div>';
+        $input = '<input id="' . esc_attr($name) . '" name="' . esc_attr($name) . '" type="' . esc_attr($type) . '" value="' . $value . '"' . $required_attr . '>';
+
+        if ($type === 'password') {
+            $input = '<div class="wp-org-password-field">' . $input
+                . '<button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password">'
+                . '<span class="wp-org-password-toggle-icon" aria-hidden="true"></span>'
+                . '</button></div>';
+        }
+
+        $html = '<div class="wp-org-field"><label for="' . esc_attr($name) . '">' . esc_html($label) . '</label>' . $input . '</div>';
 
         if ($echo) {
             echo $html;
@@ -267,5 +277,28 @@ class Auth
         $settings = get_option('wp_org_general_settings', []);
 
         return !empty($settings['require_approval']);
+    }
+
+    private function get_register_redirect_url()
+    {
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '';
+        $current_url = $request_uri !== '' ? home_url($request_uri) : home_url('/');
+
+        return add_query_arg('profile_tab', 'register', $current_url);
+    }
+
+    private function get_post_register_redirect_url()
+    {
+        $redirect = isset($_POST['redirect_to']) ? esc_url_raw(wp_unslash($_POST['redirect_to'])) : '';
+        if ($redirect !== '') {
+            return $redirect;
+        }
+
+        $referer = wp_get_referer();
+        if ($referer) {
+            return $referer;
+        }
+
+        return $this->get_register_redirect_url();
     }
 }

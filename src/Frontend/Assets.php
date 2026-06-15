@@ -34,6 +34,31 @@ class Assets
     {
         return <<<'JS'
 (function($){
+    function initPasswordToggles(context) {
+        $(context || document).find('.wp-org-password-field').each(function() {
+            var wrapper = $(this);
+            var input = wrapper.find('input[type="password"], input[type="text"]').first();
+            var button = wrapper.find('.wp-org-password-toggle');
+
+            if (!input.length || !button.length || wrapper.data('passwordToggleReady')) {
+                return;
+            }
+
+            wrapper.data('passwordToggleReady', true);
+
+            button.on('click', function() {
+                var isVisible = input.attr('type') === 'text';
+                var nextType = isVisible ? 'password' : 'text';
+                var nextLabel = isVisible ? button.data('showLabel') : button.data('hideLabel');
+
+                input.attr('type', nextType);
+                button.attr('aria-pressed', String(!isVisible));
+                button.attr('aria-label', nextLabel);
+                wrapper.toggleClass('is-visible', !isVisible);
+            });
+        });
+    }
+
     function loadRegions(type, parent, target, selected) {
         $.get(WpOrgFrontend.ajaxUrl, { action: 'wp_org_regions', type: type, parent: parent }).done(function(response) {
             var items = response && response.success ? response.data : [];
@@ -76,6 +101,8 @@ class Assets
             }
         }
     });
+
+    initPasswordToggles(document);
 })(jQuery);
 JS;
     }
