@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Velocity Organisasi
  * Description: Plugin manajemen organisasi untuk login, register, anggota, dan pendaftaran.
- * Version: 0.1.14
+ * Version: 0.1.15
  * Author: Velocitydeveloper
  * Text Domain: wp-org
  */
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WP_ORG_VERSION', '0.1.14');
+define('WP_ORG_VERSION', '0.1.15');
 define('WP_ORG_PATH', plugin_dir_path(__FILE__));
 define('WP_ORG_URL', plugin_dir_url(__FILE__));
 

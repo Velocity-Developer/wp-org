@@ -21,6 +21,9 @@ class Plugin
 
         $regions = new \WpOrg\Support\Regions();
         $regions->register();
+
+        $menu_visibility = new \WpOrg\Support\MenuVisibility();
+        $menu_visibility->register();
     }
 
     private function load_admin()

@@ -87,31 +87,28 @@
 
 .wp-org-password-toggle-icon {
     position: relative;
+    display: inline-flex;
     width: 20px;
-    height: 12px;
-    border: 2px solid currentColor;
-    border-radius: 12px / 8px;
+    height: 20px;
 }
 
-.wp-org-password-toggle-icon::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    transform: translate(-50%, -50%);
+.wp-org-password-toggle-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .wp-org-password-field.is-visible .wp-org-password-toggle-icon::after {
     content: "";
     position: absolute;
-    top: -3px;
-    left: 8px;
+    top: -1px;
+    left: 9px;
     width: 2px;
-    height: 18px;
+    height: 22px;
     background: currentColor;
     border-radius: 999px;
     transform: rotate(-45deg);

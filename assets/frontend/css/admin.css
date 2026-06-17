@@ -96,12 +96,51 @@
 
 .wp-org-admin-inline-form select,
 .wp-org-admin-inline-form input[type="text"],
+.wp-org-admin-inline-form input[type="email"],
+.wp-org-admin-inline-form input[type="number"],
+.wp-org-admin-inline-form input[type="date"],
 .wp-org-fields-table input[type="text"],
 .wp-org-fields-table select,
 .wp-org-fields-table textarea,
 .wp-org-bank-table input[type="text"] {
     width: 100%;
     max-width: none;
+}
+
+.wp-org-admin-inline-form select,
+.wp-org-admin-inline-form input[type="text"],
+.wp-org-admin-inline-form input[type="email"],
+.wp-org-admin-inline-form input[type="number"],
+.wp-org-admin-inline-form input[type="date"] {
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wp-org-admin-inline-form select,
+.wp-org-admin-profile-field select,
+.wp-org-fields-table select {
+    line-height: 1;
+}
+
+.wp-org-admin-inline-form select:focus,
+.wp-org-admin-inline-form input[type="text"]:focus,
+.wp-org-admin-inline-form input[type="email"]:focus,
+.wp-org-admin-inline-form input[type="number"]:focus,
+.wp-org-admin-inline-form input[type="date"]:focus,
+.wp-org-admin-profile-field input[type="text"]:focus,
+.wp-org-admin-profile-field input[type="email"]:focus,
+.wp-org-admin-profile-field input[type="number"]:focus,
+.wp-org-admin-profile-field input[type="date"]:focus,
+.wp-org-admin-profile-field input[type="file"]:focus,
+.wp-org-admin-profile-field select:focus,
+.wp-org-admin-profile-field textarea:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.14);
+    outline: none;
 }
 
 .wp-org-fields-table {

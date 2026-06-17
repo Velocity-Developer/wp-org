@@ -713,15 +713,15 @@ class Profile
         wp_nonce_field('wp_org_account_action', 'wp_org_account_nonce');
         echo '<div class="wp-org-field wp-org-account-field-wide">';
         echo '<label for="wp_org_current_password">Password Saat Ini</label>';
-        echo '<div class="wp-org-password-field"><input id="wp_org_current_password" name="current_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"></span></button></div>';
+        echo '<div class="wp-org-password-field"><input id="wp_org_current_password" name="current_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span></button></div>';
         echo '</div>';
         echo '<div class="wp-org-field">';
         echo '<label for="wp_org_new_password">Password Baru</label>';
-        echo '<div class="wp-org-password-field"><input id="wp_org_new_password" name="new_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"></span></button></div>';
+        echo '<div class="wp-org-password-field"><input id="wp_org_new_password" name="new_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span></button></div>';
         echo '</div>';
         echo '<div class="wp-org-field">';
         echo '<label for="wp_org_confirm_password">Konfirmasi Password Baru</label>';
-        echo '<div class="wp-org-password-field"><input id="wp_org_confirm_password" name="confirm_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"></span></button></div>';
+        echo '<div class="wp-org-password-field"><input id="wp_org_confirm_password" name="confirm_password" type="password" required><button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password"><span class="wp-org-password-toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span></button></div>';
         echo '</div>';
         echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_account_password_submit" value="1">Perbarui Password</button></div>';
         echo '</form>';

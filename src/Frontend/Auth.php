@@ -201,7 +201,7 @@ class Auth
         if ($type === 'password') {
             $input = '<div class="wp-org-password-field">' . $input
                 . '<button class="wp-org-password-toggle" type="button" aria-label="Tampilkan password" aria-pressed="false" data-show-label="Tampilkan password" data-hide-label="Sembunyikan password">'
-                . '<span class="wp-org-password-toggle-icon" aria-hidden="true"></span>'
+                . '<span class="wp-org-password-toggle-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></span>'
                 . '</button></div>';
         }
 
