@@ -398,6 +398,17 @@ class MemberData
         return str_ends_with($key, '_code') ? substr($key, 0, -5) . '_name' : $key . '_name';
     }
 
+    public static function get_first_field_by_type($type)
+    {
+        foreach (self::get_all_registration_fields() as $field) {
+            if (($field['type'] ?? '') === $type) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
     private static function handle_upload_field($key)
     {
         if (empty($_FILES[$key]) || empty($_FILES[$key]['name'])) {

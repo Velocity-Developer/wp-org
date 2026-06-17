@@ -16,6 +16,9 @@ class Members
         $settings = get_option('wp_org_general_settings', []);
         $is_public = !empty($settings['members_page_public']);
         $premium_enabled = MemberData::is_premium_enabled();
+        $city_field = MemberData::get_first_field_by_type('region_city');
+        $city_field_key = $city_field['key'] ?? 'city_code';
+        $city_field_label = $city_field['label'] ?? 'Kota/Kabupaten';
 
         if (!$is_public && !is_user_logged_in()) {
             return '<div class="wp-org-card"><p>Daftar anggota hanya tersedia untuk pengguna yang login.</p></div>';
@@ -28,7 +31,7 @@ class Members
 
         if ($city_code !== '') {
             $meta_query[] = [
-                'key' => 'wp_org_city_code',
+                'key' => 'wp_org_' . $city_field_key,
                 'value' => $city_code,
             ];
         }
@@ -46,7 +49,7 @@ class Members
         ob_start();
         echo '<form class="wp-org-grid wp-org-grid-2" method="get">';
         echo '<div class="wp-org-field"><input id="member_search" type="text" name="member_search" value="' . esc_attr($search) . '" placeholder="Cari anggota"></div>';
-        echo '<div class="wp-org-field"><select id="member_city" name="member_city" aria-label="Kota/Kabupaten"><option value="">Pilih kota/kabupaten</option>';
+        echo '<div class="wp-org-field"><select id="member_city" name="member_city" aria-label="' . esc_attr($city_field_label) . '"><option value="">Pilih ' . esc_html(strtolower($city_field_label)) . '</option>';
         foreach ($cities as $code => $label) {
             echo '<option value="' . esc_attr($code) . '"' . selected($city_code, $code, false) . '>' . esc_html($label) . '</option>';
         }
