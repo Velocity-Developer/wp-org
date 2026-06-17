@@ -294,6 +294,14 @@
     max-width: 760px;
 }
 
+.wp-org-profile-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .wp-org-eyebrow {
     margin: 0 0 8px;
     font-size: 12px;
@@ -321,37 +329,95 @@
     color: #54708a;
 }
 
+.wp-org-button-secondary {
+    background: transparent;
+    color: #0f3d5e;
+    border: 1px solid rgba(15, 61, 94, 0.2);
+    box-shadow: none;
+}
+
+.wp-org-button-secondary:hover {
+    background: rgba(15, 61, 94, 0.08);
+    color: #0f3d5e;
+}
+
 .wp-org-tabs {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    align-items: center;
     margin: 0;
+    padding: 10px;
+    border: 1px solid #dce7f0;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #f8fbfe 0%, #eef5fb 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .wp-org-tab {
-    display: inline-block;
-    padding: 11px 16px;
-    border: 1px solid #d7e3ee;
-    border-radius: 999px;
-    background: #f7fafc;
-    color: #1d2327;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 18px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: #355066;
     text-decoration: none;
     font-weight: 600;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.wp-org-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+}
+
+.wp-org-tab-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.wp-org-tab:hover {
+    background: rgba(19, 94, 150, 0.08);
+    border-color: rgba(19, 94, 150, 0.1);
+    color: #0f3d5e;
+}
+
+.wp-org-tab-logout {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.88);
+    border-color: #d7e3ee;
 }
 
 .wp-org-tab-active {
     background: #135e96;
     border-color: #135e96;
     color: #fff;
-    box-shadow: 0 12px 24px rgba(19, 94, 150, 0.18);
+    box-shadow: 0 8px 18px rgba(19, 94, 150, 0.18);
+}
+
+.wp-org-tab-active:hover {
+    background: #135e96;
+    border-color: #135e96;
+    color: #fff;
 }
 
 .wp-org-profile-panel {
     display: grid;
     gap: 18px;
-    padding: 22px;
+    padding: 14px 22px;
     border: 1px solid #e2ebf2;
-    border-radius: 20px;
+    border-radius: 14px;
     background: #fff;
 }
 
@@ -384,6 +450,47 @@
     padding-top: 4px;
 }
 
+.wp-org-profile-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.wp-org-profile-summary-item {
+    padding: 12px 18px;
+    border: 1px solid #dfe9f1;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #f8fbfe 0%, #ffffff 100%);
+}
+
+.wp-org-profile-summary-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #54708a;
+}
+
+.wp-org-profile-summary-value {
+    color: #16324a;
+    word-break: break-word;
+}
+
+.wp-org-profile-summary-photo {
+    display: flex;
+    justify-content: center;
+}
+
+.wp-org-profile-summary-photo img {
+    width: min(220px, 100%);
+    height: auto;
+    border: 1px solid #dfe9f1;
+    border-radius: 20px;
+    object-fit: cover;
+}
+
 .wp-org-profile-photo-row {
     grid-column: 1 / -1;
 }
@@ -391,9 +498,9 @@
 .wp-org-profile-photo-card {
     display: grid;
     gap: 16px;
-    padding: 18px;
+    padding: 12px 18px;
     border: 1px solid #dfe9f1;
-    border-radius: 18px;
+    border-radius: 14px;
     background: linear-gradient(180deg, #f8fbfe 0%, #ffffff 100%);
 }
 
@@ -635,6 +742,7 @@
     }
 
     .wp-org-profile-form,
+    .wp-org-profile-summary,
     .wp-org-premium-form {
         grid-template-columns: 1fr;
     }

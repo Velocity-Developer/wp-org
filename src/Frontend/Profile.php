@@ -32,7 +32,7 @@ class Profile
         }
 
         MemberData::save_profile_fields(get_current_user_id(), $_POST);
-        wp_safe_redirect($this->get_profile_redirect_url('profile'));
+        wp_safe_redirect($this->get_profile_redirect_url('edit-profile'));
         exit;
     }
 
@@ -50,6 +50,13 @@ class Profile
         $status = MemberData::get_status($user_id);
         $general = get_option('wp_org_general_settings', []);
         $premium_enabled = MemberData::is_premium_enabled();
+        $allowed_tabs = ['profile', 'edit-profile'];
+        if ($premium_enabled) {
+            $allowed_tabs[] = 'premium';
+        }
+        if (!in_array($active_tab, $allowed_tabs, true)) {
+            $active_tab = 'profile';
+        }
         $premium_fee = absint($general['premium_fee'] ?? 0);
         $premium_status = MemberData::get_premium_status($user_id);
         $premium_labels = MemberData::get_premium_statuses();
@@ -59,6 +66,7 @@ class Profile
         $member_card_settings = get_option('wp_org_member_card_settings', []);
         $card_view_mode = isset($_GET['member_card_view']) ? sanitize_key(wp_unslash($_GET['member_card_view'])) : '';
         $card_data = $premium_status === 'active' ? $this->get_member_card_data($user_id) : null;
+        $logout_url = wp_logout_url($this->get_current_profile_url());
         $payment_banks = array_values(array_filter((array) get_option('wp_org_payment_banks', []), static function ($bank) {
             return !empty($bank['enabled']);
         }));
@@ -71,13 +79,15 @@ class Profile
         echo '<div class="wp-org-card wp-org-profile-shell">';
         echo '<div class="wp-org-profile-header">';
         echo '<div><p class="wp-org-eyebrow">Area Anggota</p><p class="wp-org-muted wp-org-profile-intro">Kelola data profil, status pendaftaran, dan akses premium Anda dalam satu halaman.</p></div>';
-        echo '<div class="wp-org-profile-status"><span class="wp-org-profile-status-label">Status pendaftaran</span><span class="wp-org-status wp-org-status-' . esc_attr($status) . '">' . esc_html($statuses[$status] ?? $status) . '</span></div>';
+        echo '<div class="wp-org-profile-header-actions"><div class="wp-org-profile-status"><span class="wp-org-profile-status-label">Status pendaftaran</span><span class="wp-org-status wp-org-status-' . esc_attr($status) . '">' . esc_html($statuses[$status] ?? $status) . '</span></div></div>';
         echo '</div>';
         echo '<nav class="wp-org-tabs">';
-        echo '<a class="wp-org-tab ' . ($active_tab === 'profile' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'profile')) . '">Profil</a>';
+        echo '<a class="wp-org-tab ' . ($active_tab === 'profile' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'profile')) . '">' . $this->render_nav_icon('user') . '<span>Profil</span></a>';
+        echo '<a class="wp-org-tab ' . ($active_tab === 'edit-profile' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'edit-profile')) . '">' . $this->render_nav_icon('square-pen') . '<span>Edit Profile</span></a>';
         if ($premium_enabled) {
-            echo '<a class="wp-org-tab ' . ($active_tab === 'premium' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'premium')) . '">Member Premium</a>';
+            echo '<a class="wp-org-tab ' . ($active_tab === 'premium' ? 'wp-org-tab-active' : '') . '" href="' . esc_url(add_query_arg('profile_tab', 'premium')) . '">' . $this->render_nav_icon('badge-check') . '<span>Member Premium</span></a>';
         }
+        echo '<a class="wp-org-tab wp-org-tab-logout" href="' . esc_url($logout_url) . '">' . $this->render_nav_icon('log-out') . '<span>Logout</span></a>';
         echo '</nav>';
 
         if ($active_tab === 'premium' && $premium_enabled) {
@@ -124,7 +134,7 @@ class Profile
             }
 
             echo '</div>';
-        } else {
+        } elseif ($active_tab === 'edit-profile') {
             $profile_photo_field = null;
             $profile_form_fields = [];
 
@@ -156,6 +166,11 @@ class Profile
 
             echo '<div class="wp-org-actions"><button class="wp-org-button" type="submit" name="wp_org_profile_submit" value="1">Simpan Profil</button></div>';
             echo '</form>';
+            echo '</div>';
+        } else {
+            echo '<div class="wp-org-profile-panel">';
+            echo '<div class="wp-org-section-heading"><div><h3>Ringkasan Profil</h3><p class="wp-org-muted">Lihat data anggota Anda di bawah ini.</p></div></div>';
+            echo $this->render_profile_summary($user_id, $fields);
             echo '</div>';
         }
 
@@ -520,6 +535,69 @@ class Profile
         $html .= '</div></div>';
 
         return $html;
+    }
+
+    private function render_profile_summary($user_id, $fields)
+    {
+        $html = '';
+        $photo_url = (string) get_user_meta($user_id, 'wp_org_member_photo', true);
+
+        if ($photo_url !== '') {
+            $html .= '<div class="wp-org-profile-summary-photo"><img src="' . esc_url($photo_url) . '" alt="Foto profil anggota"></div>';
+        }
+
+        $html .= '<div class="wp-org-profile-summary">';
+
+        foreach ($fields as $field) {
+            $key = $field['key'];
+            $value = get_user_meta($user_id, 'wp_org_' . $key, true);
+
+            if ($key === 'member_photo') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = implode(', ', array_filter(array_map('sanitize_text_field', $value)));
+            }
+
+            if (in_array($field['type'], ['region_province', 'region_city', 'region_district'], true)) {
+                $suffix = str_replace('_code', '_name', $key);
+                $named_value = get_user_meta($user_id, 'wp_org_' . $suffix, true);
+                if ($named_value) {
+                    $value = $named_value;
+                }
+            }
+
+            if ($field['type'] === 'image') {
+                $value = $value ? '<a href="' . esc_url((string) $value) . '" target="_blank" rel="noopener">Lihat gambar</a>' : '<span class="wp-org-muted">Belum diisi</span>';
+            } elseif ($field['type'] === 'file') {
+                $value = $value ? '<a href="' . esc_url((string) $value) . '" target="_blank" rel="noopener">Lihat file</a>' : '<span class="wp-org-muted">Belum diisi</span>';
+            } else {
+                $value = $value !== '' ? esc_html((string) $value) : '<span class="wp-org-muted">Belum diisi</span>';
+            }
+
+            $html .= '<div class="wp-org-profile-summary-item"><span class="wp-org-profile-summary-label">' . esc_html($field['label']) . '</span><div class="wp-org-profile-summary-value">' . $value . '</div></div>';
+        }
+
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    private function render_nav_icon($name)
+    {
+        $icons = [
+            'user' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21a7 7 0 0 0-14 0"/><circle cx="12" cy="8" r="4"/></svg>',
+            'square-pen' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m16 3 5 5"/><path d="M13 20h8"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L8 18l-4 1 1-4Z"/></svg>',
+            'badge-check' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 15 2 2 4-4"/><path d="M8.5 4.5 10 2l2 2 2-2 1.5 2.5L18.5 5l-.5 3 2 2-2 2 .5 3-3 .5L14 22l-2-2-2 2-1.5-2.5-3-.5.5-3-2-2 2-2-.5-3Z"/></svg>',
+            'log-out' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8"/></svg>',
+        ];
+
+        if (!isset($icons[$name])) {
+            return '';
+        }
+
+        return '<span class="wp-org-tab-icon">' . $icons[$name] . '</span>';
     }
 
     private function render_field($field, $value, Regions $regions)
