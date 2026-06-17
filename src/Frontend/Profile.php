@@ -379,7 +379,7 @@ class Profile
 
         $member_card_settings = get_option('wp_org_member_card_settings', []);
         $member_number = MemberData::get_member_number($user_id);
-        $region = trim(get_user_meta($user_id, 'wp_org_city_name', true) . ', ' . get_user_meta($user_id, 'wp_org_province_name', true), ', ');
+        $region = MemberData::get_user_region_summary($user_id);
         $issued_at = get_user_meta($user_id, 'wp_org_premium_requested_at', true);
         if (!$issued_at) {
             $issued_at = current_time('mysql');

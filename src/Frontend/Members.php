@@ -57,7 +57,7 @@ class Members
             echo '<tr><td colspan="3">Belum ada data anggota.</td></tr>';
         } else {
             foreach ($users as $user) {
-                $region = trim(get_user_meta($user->ID, 'wp_org_city_name', true) . ', ' . get_user_meta($user->ID, 'wp_org_province_name', true), ', ');
+                $region = MemberData::get_user_region_summary($user->ID);
                 $premium_status = MemberData::get_premium_status($user->ID);
                 $verified_badge = '';
 
@@ -79,6 +79,7 @@ class Members
      */
     private function get_available_cities()
     {
+        $regions = new \WpOrg\Support\Regions();
         $users = get_users([
             'role__in' => ['org_member', 'org_admin'],
             'number' => 500,
@@ -88,8 +89,30 @@ class Members
         $cities = [];
 
         foreach ($users as $user_id) {
-            $code = (string) get_user_meta($user_id, 'wp_org_city_code', true);
-            $name = (string) get_user_meta($user_id, 'wp_org_city_name', true);
+            $name = '';
+            $code = '';
+
+            foreach (MemberData::get_all_registration_fields() as $field) {
+                if ($field['type'] !== 'region_city') {
+                    continue;
+                }
+
+                $code = (string) get_user_meta($user_id, 'wp_org_' . $field['key'], true);
+                $name = (string) get_user_meta($user_id, 'wp_org_' . MemberData::get_region_name_key($field['key']), true);
+                break;
+            }
+
+            if ($code === '') {
+                $code = (string) get_user_meta($user_id, 'wp_org_city_code', true);
+            }
+
+            if ($name === '') {
+                $name = (string) get_user_meta($user_id, 'wp_org_city_name', true);
+            }
+
+            if ($name === '' && $code !== '') {
+                $name = $regions->get_city_name($code);
+            }
 
             if ($code !== '' && $name !== '') {
                 $cities[$code] = $name;

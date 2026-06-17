@@ -118,6 +118,12 @@ class MemberData
     public static function save_profile_fields_with_definitions($user_id, $data, array $fields)
     {
         $regions = new Regions();
+        $full_name = '';
+        $region_codes = [
+            'province' => '',
+            'city' => '',
+            'district' => '',
+        ];
 
         foreach ($fields as $field) {
             $key = $field['key'];
@@ -139,15 +145,37 @@ class MemberData
             }
 
             update_user_meta($user_id, 'wp_org_' . $key, $value);
+
+            if ($key === 'full_name' && is_string($value)) {
+                $full_name = $value;
+            }
+
+            if ($field['type'] === 'region_province' && is_string($value)) {
+                $region_codes['province'] = $value;
+                update_user_meta($user_id, 'wp_org_' . self::get_region_name_key($key), $regions->get_province_name($value));
+            }
+
+            if ($field['type'] === 'region_city' && is_string($value)) {
+                $region_codes['city'] = $value;
+                update_user_meta($user_id, 'wp_org_' . self::get_region_name_key($key), $regions->get_city_name($value));
+            }
+
+            if ($field['type'] === 'region_district' && is_string($value)) {
+                $region_codes['district'] = $value;
+                update_user_meta($user_id, 'wp_org_' . self::get_region_name_key($key), $regions->get_district_name($value));
+            }
         }
 
-        $province_code = isset($data['province_code']) ? sanitize_text_field(wp_unslash($data['province_code'])) : '';
-        $city_code = isset($data['city_code']) ? sanitize_text_field(wp_unslash($data['city_code'])) : '';
-        $district_code = isset($data['district_code']) ? sanitize_text_field(wp_unslash($data['district_code'])) : '';
+        update_user_meta($user_id, 'wp_org_province_name', $regions->get_province_name($region_codes['province']));
+        update_user_meta($user_id, 'wp_org_city_name', $regions->get_city_name($region_codes['city']));
+        update_user_meta($user_id, 'wp_org_district_name', $regions->get_district_name($region_codes['district']));
 
-        update_user_meta($user_id, 'wp_org_province_name', $regions->get_province_name($province_code));
-        update_user_meta($user_id, 'wp_org_city_name', $regions->get_city_name($city_code));
-        update_user_meta($user_id, 'wp_org_district_name', $regions->get_district_name($district_code));
+        if ($full_name !== '') {
+            wp_update_user([
+                'ID' => $user_id,
+                'display_name' => $full_name,
+            ]);
+        }
     }
 
     public static function validate_submission($data, $is_update = false)
@@ -313,6 +341,61 @@ class MemberData
         }
 
         return 'pending';
+    }
+
+    public static function get_user_region_summary($user_id)
+    {
+        $fields = self::get_all_registration_fields();
+        $regions = new Regions();
+        $province = '';
+        $city = '';
+        $province_code = '';
+        $city_code = '';
+
+        foreach ($fields as $field) {
+            $key = $field['key'];
+
+            if ($field['type'] === 'region_province' && $province === '') {
+                $province = (string) get_user_meta($user_id, 'wp_org_' . self::get_region_name_key($key), true);
+                $province_code = (string) get_user_meta($user_id, 'wp_org_' . $key, true);
+            }
+
+            if ($field['type'] === 'region_city' && $city === '') {
+                $city = (string) get_user_meta($user_id, 'wp_org_' . self::get_region_name_key($key), true);
+                $city_code = (string) get_user_meta($user_id, 'wp_org_' . $key, true);
+            }
+        }
+
+        if ($province === '') {
+            $province = (string) get_user_meta($user_id, 'wp_org_province_name', true);
+        }
+
+        if ($city === '') {
+            $city = (string) get_user_meta($user_id, 'wp_org_city_name', true);
+        }
+
+        if ($province_code === '') {
+            $province_code = (string) get_user_meta($user_id, 'wp_org_province_code', true);
+        }
+
+        if ($city_code === '') {
+            $city_code = (string) get_user_meta($user_id, 'wp_org_city_code', true);
+        }
+
+        if ($province === '' && $province_code !== '') {
+            $province = $regions->get_province_name($province_code);
+        }
+
+        if ($city === '' && $city_code !== '') {
+            $city = $regions->get_city_name($city_code);
+        }
+
+        return trim($city . ', ' . $province, ', ');
+    }
+
+    public static function get_region_name_key($key)
+    {
+        return str_ends_with($key, '_code') ? substr($key, 0, -5) . '_name' : $key . '_name';
     }
 
     private static function handle_upload_field($key)
