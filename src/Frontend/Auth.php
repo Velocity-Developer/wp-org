@@ -13,6 +13,7 @@ class Auth
         add_shortcode('org_register', [$this, 'render_register_shortcode']);
         add_shortcode('org_login', [$this, 'render_login_shortcode']);
         add_action('init', [$this, 'handle_post_actions']);
+        add_filter('login_redirect', [$this, 'filter_login_redirect'], 10, 3);
     }
 
     public function handle_post_actions()
@@ -190,6 +191,27 @@ class Auth
             : (!empty($settings['login_redirect']) ? $settings['login_redirect'] : home_url('/'));
         wp_safe_redirect($redirect);
         exit;
+    }
+
+    public function filter_login_redirect($redirect_to, $requested_redirect_to, $user)
+    {
+        if (is_wp_error($user) || !$user instanceof \WP_User) {
+            return $redirect_to;
+        }
+
+        $settings = get_option('wp_org_general_settings', []);
+        $configured_redirect = !empty($settings['login_redirect']) ? esc_url_raw((string) $settings['login_redirect']) : '';
+        if ($configured_redirect === '') {
+            return $redirect_to;
+        }
+
+        $posted_redirect = isset($_POST['redirect_to']) ? esc_url_raw(wp_unslash($_POST['redirect_to'])) : '';
+        $is_wp_org_frontend_login = isset($_POST['wp_org_login_submit']);
+        if ($is_wp_org_frontend_login && $posted_redirect !== '') {
+            return $posted_redirect;
+        }
+
+        return $configured_redirect;
     }
 
     private function render_field($label, $name, $type, $required, $echo = true)
