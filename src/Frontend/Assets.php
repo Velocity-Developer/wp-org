@@ -105,19 +105,22 @@ class Assets
     }
 
     function initFrontendModals() {
-        $(document).on('click', '.wp-org-open-modal', function() {
+        $(document).on('click', '.wp-org-open-modal, .wp-org-anggota-card', function() {
             var target = $(this).data('modalTarget');
-            $('#' + target).addClass('is-open').attr('aria-hidden', 'false');
-            $('body').addClass('wp-org-modal-open');
+            if (target) {
+                $('#' + target).addClass('is-open').attr('aria-hidden', 'false');
+                $('body').addClass('wp-org-modal-open');
+            }
         });
 
-        $(document).on('click', '.wp-org-modal-close, .wp-org-modal-close-inline', function() {
-            $(this).closest('.wp-org-modal').removeClass('is-open').attr('aria-hidden', 'true');
+        $(document).on('click', '.wp-org-modal-close, .wp-org-modal-close-inline, [data-modal-close]', function() {
+            var modal = $(this).closest('.wp-org-modal, .wp-org-member-modal');
+            modal.removeClass('is-open').attr('aria-hidden', 'true');
             $('body').removeClass('wp-org-modal-open');
         });
 
-        $(document).on('click', '.wp-org-modal', function(event) {
-            if ($(event.target).is('.wp-org-modal')) {
+        $(document).on('click', '.wp-org-modal, .wp-org-member-modal', function(event) {
+            if ($(event.target).is('.wp-org-modal, .wp-org-member-modal, .wp-org-member-modal-overlay')) {
                 $(this).removeClass('is-open').attr('aria-hidden', 'true');
                 $('body').removeClass('wp-org-modal-open');
             }
@@ -125,7 +128,7 @@ class Assets
 
         $(document).on('keydown', function(event) {
             if (event.key === 'Escape') {
-                $('.wp-org-modal.is-open').removeClass('is-open').attr('aria-hidden', 'true');
+                $('.wp-org-modal.is-open, .wp-org-member-modal.is-open').removeClass('is-open').attr('aria-hidden', 'true');
                 $('body').removeClass('wp-org-modal-open');
             }
         });

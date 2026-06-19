@@ -83,7 +83,7 @@ class Regions
     /**
      * @return array<string, array<int, array<string, string>>>
      */
-    private function get_regions()
+    public function get_regions()
     {
         if ($this->regions !== null) {
             return $this->regions;

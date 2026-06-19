@@ -16,6 +16,7 @@ class AdminMenu
         add_action('admin_post_wp_org_save_settings', [$this, 'handle_save_settings']);
         add_action('admin_post_wp_org_seed_members', [$this, 'handle_seed_members']);
         add_action('admin_post_wp_org_import_subscribers', [$this, 'handle_import_subscribers']);
+        add_action('admin_post_wp_org_migrate_old_members', [$this, 'handle_migrate_old_members']);
         add_action('admin_post_wp_org_save_payment_banks', [$this, 'handle_save_payment_banks']);
         add_action('admin_post_wp_org_save_member_card_settings', [$this, 'handle_save_member_card_settings']);
         add_action('admin_post_wp_org_generate_pages', [$this, 'handle_generate_pages']);
@@ -60,7 +61,7 @@ class AdminMenu
 
         $user_args = [
             'role__in' => ['org_member', 'org_admin'],
-            'number' => 100,
+            'number' => -1,
             'orderby' => 'registered',
             'order' => 'DESC',
         ];
@@ -74,11 +75,22 @@ class AdminMenu
             $user_args['meta_query'] = $meta_query;
         }
 
+        // Get actual total count
+        $count_users = count_users();
+        $total_org_member = isset($count_users['avail_roles']['org_member']) ? $count_users['avail_roles']['org_member'] : 0;
+        $total_org_admin = isset($count_users['avail_roles']['org_admin']) ? $count_users['avail_roles']['org_admin'] : 0;
+        $total_anggota = $total_org_member + $total_org_admin;
+
         $users = get_users($user_args);
         $status_totals = array_fill_keys(array_keys($statuses), 0);
         $premium_totals = array_fill_keys(array_keys($premium_statuses), 0);
 
-        foreach ($users as $user) {
+        // Get all users without limit for calculating status totals
+        $all_users_args = $user_args;
+        $all_users_args['number'] = -1;
+        $all_users = get_users($all_users_args);
+
+        foreach ($all_users as $user) {
             $member_status = MemberData::get_status($user->ID);
             $premium_status = MemberData::get_premium_status($user->ID);
 
@@ -94,7 +106,7 @@ class AdminMenu
         echo '<div class="wrap wp-org-admin">';
         echo '<div class="wp-org-admin-hero"><div><h1>Data Anggota</h1><p>Kelola status pendaftaran, premium membership, dan catatan internal anggota dalam satu tampilan.</p></div></div>';
         echo '<div class="wp-org-admin-summary">';
-        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Total Anggota</span><strong>' . esc_html((string) count($users)) . '</strong></div>';
+        echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Total Anggota</span><strong>' . esc_html((string) $total_anggota) . '</strong></div>';
         echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Approved</span><strong>' . esc_html((string) ($status_totals['approved'] ?? 0)) . '</strong></div>';
         echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Pending</span><strong>' . esc_html((string) ($status_totals['pending'] ?? 0)) . '</strong></div>';
         echo '<div class="wp-org-admin-stat"><span class="wp-org-admin-stat-label">Premium Aktif</span><strong>' . esc_html((string) ($premium_totals['active'] ?? 0)) . '</strong></div>';
@@ -131,7 +143,11 @@ class AdminMenu
             $premium_ref = get_user_meta($user->ID, 'wp_org_premium_reference', true);
             $premium_proof_url = get_user_meta($user->ID, 'wp_org_premium_proof_url', true);
             $region = MemberData::get_user_region_summary($user->ID);
-            echo '<tr><td><strong>' . esc_html($user->display_name) . '</strong></td><td><code>' . esc_html($member_number) . '</code></td><td><a href="mailto:' . esc_attr($user->user_email) . '">' . esc_html($user->user_email) . '</a></td><td>' . ($region !== '' ? esc_html($region) : '<span class="wp-org-admin-subtle">Belum diisi</span>') . '</td><td><span class="wp-org-admin-badge wp-org-admin-badge-' . esc_attr($status) . '">' . esc_html($statuses[$status] ?? $status) . '</span></td><td><span class="wp-org-admin-badge wp-org-admin-badge-premium-' . esc_attr($premium_status) . '">' . esc_html($premium_statuses[$premium_status] ?? $premium_status) . '</span>' . ($premium_ref ? '<br><small class="wp-org-admin-subtle">' . esc_html($premium_ref) . '</small>' : '') . ($premium_proof_url ? '<br><a class="wp-org-admin-link" href="' . esc_url($premium_proof_url) . '" target="_blank" rel="noopener">Lihat Bukti</a>' : '') . '</td><td>' . esc_html(get_user_meta($user->ID, 'wp_org_registered_at', true) ?: $user->user_registered) . '</td><td>' . ($note ? esc_html($note) : '<span class="wp-org-admin-subtle">Belum ada catatan</span>') . '</td><td><button type="button" class="button button-secondary wp-org-admin-open-modal" data-modal-target="wp-org-member-modal-' . esc_attr((string) $user->ID) . '">Kelola</button>' . $this->render_member_action_modal($user, $statuses, $status, $note, $premium_statuses, $premium_status) . '</td></tr>';
+            $full_name = (string) get_user_meta($user->ID, 'wp_org_full_name', true);
+            if ($full_name === '') {
+                $full_name = $user->display_name;
+            }
+            echo '<tr><td><strong>' . esc_html($full_name) . '</strong></td><td><code>' . esc_html($member_number) . '</code></td><td><a href="mailto:' . esc_attr($user->user_email) . '">' . esc_html($user->user_email) . '</a></td><td>' . ($region !== '' ? esc_html($region) : '<span class="wp-org-admin-subtle">Belum diisi</span>') . '</td><td><span class="wp-org-admin-badge wp-org-admin-badge-' . esc_attr($status) . '">' . esc_html($statuses[$status] ?? $status) . '</span></td><td><span class="wp-org-admin-badge wp-org-admin-badge-premium-' . esc_attr($premium_status) . '">' . esc_html($premium_statuses[$premium_status] ?? $premium_status) . '</span>' . ($premium_ref ? '<br><small class="wp-org-admin-subtle">' . esc_html($premium_ref) . '</small>' : '') . ($premium_proof_url ? '<br><a class="wp-org-admin-link" href="' . esc_url($premium_proof_url) . '" target="_blank" rel="noopener">Lihat Bukti</a>' : '') . '</td><td>' . esc_html(get_user_meta($user->ID, 'wp_org_registered_at', true) ?: $user->user_registered) . '</td><td>' . ($note ? esc_html($note) : '<span class="wp-org-admin-subtle">Belum ada catatan</span>') . '</td><td><button type="button" class="button button-secondary wp-org-admin-open-modal" data-modal-target="wp-org-member-modal-' . esc_attr((string) $user->ID) . '">Kelola</button>' . $this->render_member_action_modal($user, $statuses, $status, $note, $premium_statuses, $premium_status) . '</td></tr>';
         }
 
         echo '</tbody></table></div>';
@@ -218,6 +234,15 @@ class AdminMenu
             if ($imported_subscribers >= 0) {
                 echo '<div class="notice notice-success is-dismissible"><p>Sinkronisasi selesai. ' . esc_html((string) $imported_subscribers) . ' subscriber baru ditambahkan sebagai anggota.</p></div>';
             }
+            $migrated_count = isset($_GET['migrated']) ? absint($_GET['migrated']) : -1;
+            if ($migrated_count >= 0) {
+                echo '<div class="notice notice-success is-dismissible"><p>Migrasi selesai. ' . esc_html((string) $migrated_count) . ' anggota lama berhasil diupdate menjadi role org_member.</p></div>';
+            }
+
+            $um_anggota_count = count(get_users([
+                'role' => 'um_anggota',
+                'fields' => 'ids',
+            ]));
 
             echo '<div class="wp-org-admin-card"><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
             wp_nonce_field('wp_org_seed_members');
@@ -235,6 +260,14 @@ class AdminMenu
             wp_nonce_field('wp_org_import_subscribers');
             echo '<input type="hidden" name="action" value="wp_org_import_subscribers">';
             submit_button('Import / Update Subscriber', 'secondary');
+            echo '</form></div>';
+            echo '<div class="wp-org-admin-card"><h2>Migrasi Anggota Lama</h2>';
+            echo '<p>Ubah role anggota lama dari <code>um_anggota</code> menjadi <code>org_member</code> tanpa menghapus role yang lain.</p>';
+            echo '<p><strong>' . esc_html((string) $um_anggota_count) . '</strong> user dengan role um_anggota ditemukan. User yang sudah memiliki role org_member atau org_admin akan dilewati.</p>';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            wp_nonce_field('wp_org_migrate_old_members');
+            echo '<input type="hidden" name="action" value="wp_org_migrate_old_members">';
+            submit_button('Migrasi Anggota Lama', 'secondary');
             echo '</form></div>';
             echo '</div>';
             return;
@@ -691,6 +724,11 @@ class AdminMenu
             wp_die('Permintaan tidak valid.');
         }
 
+        $regions = new \WpOrg\Support\Regions();
+        $all_provinces = $regions->get_provinces();
+        $all_cities = $regions->get_regions()['cities'] ?? [];
+        $all_districts = $regions->get_regions()['districts'] ?? [];
+
         $users = get_users([
             'role' => 'subscriber',
             'fields' => 'all',
@@ -698,25 +736,279 @@ class AdminMenu
         $imported = 0;
 
         foreach ($users as $user) {
-            if (in_array('org_member', (array) $user->roles, true) || in_array('org_admin', (array) $user->roles, true)) {
-                continue;
+            // Check if user has any of the old meta keys
+            $has_old_meta = false;
+            if (
+                get_user_meta($user->ID, 'first_name', true) !== '' ||
+                get_user_meta($user->ID, 'phone_number', true) !== '' ||
+                get_user_meta($user->ID, 'kode_pos', true) !== '' ||
+                get_user_meta($user->ID, 'prov_anggota', true) !== '' ||
+                get_user_meta($user->ID, 'city_anggota', true) !== '' ||
+                get_user_meta($user->ID, 'kec_anggota', true) !== ''
+            ) {
+                $has_old_meta = true;
             }
 
-            $user->add_role('org_member');
+            if (in_array('org_member', (array) $user->roles, true) || in_array('org_admin', (array) $user->roles, true)) {
+                if (!$has_old_meta) {
+                    continue;
+                }
+            } else {
+                $user->add_role('org_member');
+            }
+
             MemberData::update_status($user->ID, 'approved');
 
             if (!get_user_meta($user->ID, 'wp_org_registered_at', true)) {
                 update_user_meta($user->ID, 'wp_org_registered_at', $user->user_registered);
             }
 
-            if (!get_user_meta($user->ID, 'wp_org_full_name', true)) {
+            // Get full name from old meta keys
+            $full_name = '';
+            $full_name_old = (string) get_user_meta($user->ID, 'full_name', true);
+            $first_name = (string) get_user_meta($user->ID, 'first_name', true);
+            $last_name = (string) get_user_meta($user->ID, 'last_name', true);
+
+            if ($full_name_old !== '') {
+                $full_name = $full_name_old;
+            } elseif ($first_name !== '' && $last_name !== '') {
+                $full_name = trim($first_name . ' ' . $last_name);
+            } elseif ($first_name !== '') {
+                $full_name = $first_name;
+            }
+
+            if ($full_name !== '') {
+                update_user_meta($user->ID, 'wp_org_full_name', $full_name);
+            } elseif (!get_user_meta($user->ID, 'wp_org_full_name', true)) {
+                // Fallback to display_name if no other name found
                 update_user_meta($user->ID, 'wp_org_full_name', $user->display_name);
+            }
+
+            // Copy phone_number
+            $phone_number = (string) get_user_meta($user->ID, 'phone_number', true);
+            if ($phone_number !== '') {
+                update_user_meta($user->ID, 'wp_org_phone', $phone_number);
+            }
+
+            // Copy kode_pos
+            $kode_pos = (string) get_user_meta($user->ID, 'kode_pos', true);
+            if ($kode_pos !== '') {
+                update_user_meta($user->ID, 'wp_org_postal_code', $kode_pos);
+            }
+
+            // Handle province (ALWAYS update if old meta exists)
+            $prov_anggota = (string) get_user_meta($user->ID, 'prov_anggota', true);
+            $province_code = '';
+            $province_name = '';
+            if ($prov_anggota !== '') {
+                foreach ($all_provinces as $province) {
+                    if (strcasecmp($province['name'], $prov_anggota) === 0) {
+                        $province_code = $province['code'];
+                        $province_name = $province['name'];
+                        break;
+                    }
+                }
+
+                if ($province_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_province_code', $province_code);
+                    update_user_meta($user->ID, 'wp_org_province_name', $province_name);
+                }
+            }
+
+            // Handle city
+            $city_anggota = (string) get_user_meta($user->ID, 'city_anggota', true);
+            $city_code = '';
+            $city_name = '';
+            if ($city_anggota !== '') {
+                foreach ($all_cities as $city) {
+                    if (strcasecmp($city['name'], $city_anggota) === 0) {
+                        $city_code = $city['code'];
+                        $city_name = $city['name'];
+                        break;
+                    }
+                }
+
+                if ($city_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_city_code', $city_code);
+                    update_user_meta($user->ID, 'wp_org_city_name', $city_name);
+                }
+            }
+
+            // Handle district
+            $kec_anggota = (string) get_user_meta($user->ID, 'kec_anggota', true);
+            $district_code = '';
+            $district_name = '';
+            if ($kec_anggota !== '') {
+                foreach ($all_districts as $district) {
+                    if (strcasecmp($district['name'], $kec_anggota) === 0) {
+                        $district_code = $district['code'];
+                        $district_name = $district['name'];
+                        break;
+                    }
+                }
+
+                if ($district_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_district_code', $district_code);
+                    update_user_meta($user->ID, 'wp_org_district_name', $district_name);
+                }
             }
 
             $imported++;
         }
 
         wp_safe_redirect(admin_url('admin.php?page=wp-org-settings&tab=data&imported_subscribers=' . $imported));
+        exit;
+    }
+
+    public function handle_migrate_old_members()
+    {
+        if (!current_user_can('wp_org_manage_settings') || !check_admin_referer('wp_org_migrate_old_members')) {
+            wp_die('Permintaan tidak valid.');
+        }
+
+        $regions = new \WpOrg\Support\Regions();
+        $all_provinces = $regions->get_provinces();
+        $all_cities = $regions->get_regions()['cities'] ?? [];
+        $all_districts = $regions->get_regions()['districts'] ?? [];
+
+        $users = get_users([
+            'role__in' => ['um_anggota', 'org_member', 'org_admin'], // Include all possible roles
+            'fields' => 'all',
+            'number' => -1,
+        ]);
+        $migrated = 0;
+
+        foreach ($users as $user) {
+            // Check if user has any of the old meta keys
+            $has_old_meta = false;
+            if (
+                get_user_meta($user->ID, 'first_name', true) !== '' ||
+                get_user_meta($user->ID, 'phone_number', true) !== '' ||
+                get_user_meta($user->ID, 'kode_pos', true) !== '' ||
+                get_user_meta($user->ID, 'prov_anggota', true) !== '' ||
+                get_user_meta($user->ID, 'city_anggota', true) !== '' ||
+                get_user_meta($user->ID, 'kec_anggota', true) !== '' ||
+                in_array('um_anggota', (array) $user->roles, true)
+            ) {
+                $has_old_meta = true;
+            }
+
+            if (!$has_old_meta) {
+                continue;
+            }
+
+            // Always ensure org_member role is present
+            if (!in_array('org_member', (array) $user->roles, true) && !in_array('org_admin', (array) $user->roles, true)) {
+                $user->add_role('org_member');
+            }
+            
+            // Remove old role
+            if (in_array('um_anggota', (array) $user->roles, true)) {
+                $user->remove_role('um_anggota');
+            }
+            
+            // Ensure approved status
+            MemberData::update_status($user->ID, 'approved');
+
+            // Always update registered at (if not present)
+            if (!get_user_meta($user->ID, 'wp_org_registered_at', true)) {
+                update_user_meta($user->ID, 'wp_org_registered_at', $user->user_registered);
+            }
+
+            // Get full name from old meta keys
+            $full_name = '';
+            $full_name_old = (string) get_user_meta($user->ID, 'full_name', true);
+            $first_name = (string) get_user_meta($user->ID, 'first_name', true);
+            $last_name = (string) get_user_meta($user->ID, 'last_name', true);
+
+            if ($full_name_old !== '') {
+                $full_name = $full_name_old;
+            } elseif ($first_name !== '' && $last_name !== '') {
+                $full_name = trim($first_name . ' ' . $last_name);
+            } elseif ($first_name !== '') {
+                $full_name = $first_name;
+            }
+
+            if ($full_name !== '') {
+                update_user_meta($user->ID, 'wp_org_full_name', $full_name);
+            } elseif (!get_user_meta($user->ID, 'wp_org_full_name', true)) {
+                // Fallback to display_name if no other name found
+                update_user_meta($user->ID, 'wp_org_full_name', $user->display_name);
+            }
+
+            // Copy phone_number
+            $phone_number = (string) get_user_meta($user->ID, 'phone_number', true);
+            if ($phone_number !== '') {
+                update_user_meta($user->ID, 'wp_org_phone', $phone_number);
+            }
+
+            // Copy kode_pos
+            $kode_pos = (string) get_user_meta($user->ID, 'kode_pos', true);
+            if ($kode_pos !== '') {
+                update_user_meta($user->ID, 'wp_org_postal_code', $kode_pos);
+            }
+
+            // Handle province (ALWAYS update if old meta exists)
+            $prov_anggota = (string) get_user_meta($user->ID, 'prov_anggota', true);
+            $province_code = '';
+            $province_name = '';
+            if ($prov_anggota !== '') {
+                foreach ($all_provinces as $province) {
+                    if (strcasecmp($province['name'], $prov_anggota) === 0) {
+                        $province_code = $province['code'];
+                        $province_name = $province['name'];
+                        break;
+                    }
+                }
+
+                if ($province_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_province_code', $province_code);
+                    update_user_meta($user->ID, 'wp_org_province_name', $province_name);
+                }
+            }
+
+            // Handle city
+            $city_anggota = (string) get_user_meta($user->ID, 'city_anggota', true);
+            $city_code = '';
+            $city_name = '';
+            if ($city_anggota !== '') {
+                foreach ($all_cities as $city) {
+                    if (strcasecmp($city['name'], $city_anggota) === 0) {
+                        $city_code = $city['code'];
+                        $city_name = $city['name'];
+                        break;
+                    }
+                }
+
+                if ($city_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_city_code', $city_code);
+                    update_user_meta($user->ID, 'wp_org_city_name', $city_name);
+                }
+            }
+
+            // Handle district
+            $kec_anggota = (string) get_user_meta($user->ID, 'kec_anggota', true);
+            $district_code = '';
+            $district_name = '';
+            if ($kec_anggota !== '') {
+                foreach ($all_districts as $district) {
+                    if (strcasecmp($district['name'], $kec_anggota) === 0) {
+                        $district_code = $district['code'];
+                        $district_name = $district['name'];
+                        break;
+                    }
+                }
+
+                if ($district_code !== '') {
+                    update_user_meta($user->ID, 'wp_org_district_code', $district_code);
+                    update_user_meta($user->ID, 'wp_org_district_name', $district_name);
+                }
+            }
+
+            $migrated++;
+        }
+
+        wp_safe_redirect(admin_url('admin.php?page=wp-org-settings&tab=data&migrated=' . $migrated));
         exit;
     }
 
@@ -774,6 +1066,8 @@ class AdminMenu
             'user_email' => $user_email,
         ]);
 
+        update_user_meta($user_id, 'wp_org_full_name', $display_name);
+
         MemberData::save_profile_fields_with_definitions($user_id, $_POST, MemberData::get_all_registration_fields());
 
         wp_safe_redirect(admin_url('admin.php?page=wp-org'));
@@ -813,8 +1107,12 @@ class AdminMenu
         $modal_id = 'wp-org-member-modal-' . $user->ID;
         $member_number = $this->get_member_number($user->ID);
         $premium_note = (string) get_user_meta($user->ID, 'wp_org_premium_note', true);
+        $full_name = (string) get_user_meta($user->ID, 'wp_org_full_name', true);
+        if ($full_name === '') {
+            $full_name = $user->display_name;
+        }
         $html = '<div id="' . esc_attr($modal_id) . '" class="wp-org-admin-modal" aria-hidden="true"><div class="wp-org-admin-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="' . esc_attr($modal_id) . '-title">';
-        $html .= '<div class="wp-org-admin-modal-header"><div><h3 id="' . esc_attr($modal_id) . '-title">Kelola ' . esc_html($user->display_name) . '</h3><p class="wp-org-admin-subtle" style="margin:0">Nomor anggota: <code>' . esc_html($member_number) . '</code><br>' . esc_html($user->user_email) . '</p></div><button type="button" class="wp-org-admin-modal-close" aria-label="Tutup">&times;</button></div>';
+        $html .= '<div class="wp-org-admin-modal-header"><div><h3 id="' . esc_attr($modal_id) . '-title">Kelola ' . esc_html($full_name) . '</h3><p class="wp-org-admin-subtle" style="margin:0">Nomor anggota: <code>' . esc_html($member_number) . '</code><br>' . esc_html($user->user_email) . '</p></div><button type="button" class="wp-org-admin-modal-close" aria-label="Tutup">&times;</button></div>';
         $html .= '<div class="wp-org-admin-modal-grid">';
         $html .= $this->render_member_profile_section($user);
         $html .= '<div class="wp-org-admin-modal-section"><h4>Status Anggota</h4><form class="wp-org-admin-inline-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
