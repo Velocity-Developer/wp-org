@@ -311,6 +311,28 @@ class Profile
 
         $user_id = get_current_user_id();
 
+        // Delete all media attachments associated with this user
+        $all_meta = get_user_meta($user_id);
+        $upload_fields = [];
+        $fields = \WpOrg\Support\MemberData::get_all_registration_fields();
+        foreach ($fields as $field) {
+            if (\WpOrg\Support\MemberData::is_upload_field($field)) {
+                $upload_fields[] = 'wp_org_' . $field['key'];
+            }
+        }
+        $upload_fields[] = 'wp_org_premium_proof_url'; // Also include premium proof
+
+        foreach ($all_meta as $meta_key => $meta_values) {
+            if (in_array($meta_key, $upload_fields, true)) {
+                foreach ($meta_values as $url) {
+                    $attachment_id = attachment_url_to_postid($url);
+                    if ($attachment_id) {
+                        wp_delete_attachment($attachment_id, true); // Force delete permanently
+                    }
+                }
+            }
+        }
+
         require_once ABSPATH . 'wp-admin/includes/user.php';
 
         wp_logout();
@@ -347,6 +369,8 @@ class Profile
         }
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
 
         $uploaded = wp_handle_upload($_FILES['premium_proof'], [
             'test_form' => false,
@@ -359,6 +383,21 @@ class Profile
 
         if (!empty($uploaded['error'])) {
             return new \WP_Error('premium_proof_upload_failed', sanitize_text_field($uploaded['error']));
+        }
+
+        // Insert as attachment to show in Media Library
+        $attachment = [
+            'post_mime_type' => $uploaded['type'],
+            'post_title'     => sanitize_file_name($_FILES['premium_proof']['name']),
+            'post_content'   => '',
+            'post_status'    => 'inherit'
+        ];
+        $attachment_id = wp_insert_attachment($attachment, $uploaded['file']);
+
+        if (!is_wp_error($attachment_id)) {
+            // Generate attachment metadata
+            $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded['file']);
+            wp_update_attachment_metadata($attachment_id, $attachment_data);
         }
 
         return esc_url_raw($uploaded['url']);

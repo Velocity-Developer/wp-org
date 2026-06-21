@@ -358,7 +358,7 @@
 
 .wp-org-anggota-name {
     margin: 0;
-    font-size: 18px;
+    font-size: 14px;
     line-height: 1.2;
     color: #16324a;
     font-weight: 600;
@@ -369,14 +369,14 @@
 
 .wp-org-anggota-number {
     margin: 0;
-    font-size: 14px;
+    font-size: 12px;
     color: #617487;
     font-weight: 600;
 }
 
 .wp-org-anggota-province {
     margin: 0;
-    font-size: 14px;
+    font-size: 12px;
     color: #54708a;
 }
 
@@ -390,6 +390,48 @@
     .wp-org-daftar-anggota-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.wp-org-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+}
+
+.wp-org-pagination .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #dfe9f1;
+    border-radius: 12px;
+    background: #fff;
+    color: #16324a;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.wp-org-pagination .page-numbers:hover {
+    border-color: #135e96;
+    color: #135e96;
+    background: #f0f7ff;
+}
+
+.wp-org-pagination .page-numbers.current {
+    background: linear-gradient(135deg, #135e96, #0f4c79);
+    color: #fff;
+    border-color: transparent;
+}
+
+.wp-org-pagination .page-numbers.dots {
+    border: none;
+    background: transparent;
+    cursor: default;
 }
 
 .wp-org-member-modal {

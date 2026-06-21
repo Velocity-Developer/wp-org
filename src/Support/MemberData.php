@@ -513,6 +513,8 @@ class MemberData
         }
 
         require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
 
         $uploaded = wp_handle_upload($_FILES[$key], [
             'test_form' => false,
@@ -526,6 +528,21 @@ class MemberData
 
         if (!empty($uploaded['error'])) {
             return '';
+        }
+
+        // Insert as attachment to show in Media Library
+        $attachment = [
+            'post_mime_type' => $uploaded['type'],
+            'post_title'     => sanitize_file_name($_FILES[$key]['name']),
+            'post_content'   => '',
+            'post_status'    => 'inherit'
+        ];
+        $attachment_id = wp_insert_attachment($attachment, $uploaded['file']);
+
+        if (!is_wp_error($attachment_id)) {
+            // Generate attachment metadata
+            $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded['file']);
+            wp_update_attachment_metadata($attachment_id, $attachment_data);
         }
 
         return esc_url_raw($uploaded['url']);

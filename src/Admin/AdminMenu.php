@@ -23,6 +23,7 @@ class AdminMenu
         add_action('admin_post_wp_org_update_premium_status', [$this, 'handle_update_premium_status']);
         add_action('admin_post_wp_org_update_member_profile', [$this, 'handle_update_member_profile']);
         add_action('admin_post_wp_org_reset_member_numbers', [$this, 'handle_reset_member_numbers']);
+        add_action('admin_post_wp_org_delete_member', [$this, 'handle_delete_member']);
     }
 
     public function add_menu()
@@ -1154,6 +1155,50 @@ class AdminMenu
         exit;
     }
 
+    public function handle_delete_member()
+    {
+        $user_id = isset($_POST['user_id']) ? absint($_POST['user_id']) : 0;
+
+        if (!$user_id || !current_user_can('wp_org_manage_members') || !check_admin_referer('wp_org_delete_member_' . $user_id)) {
+            wp_die('Permintaan tidak valid.');
+        }
+
+        // Don't allow deleting yourself
+        if ($user_id === get_current_user_id()) {
+            wp_die('Anda tidak dapat menghapus akun sendiri.');
+        }
+
+        // Delete all media attachments associated with this user
+        $all_meta = get_user_meta($user_id);
+        $upload_fields = [];
+        $fields = \WpOrg\Support\MemberData::get_all_registration_fields();
+        foreach ($fields as $field) {
+            if (\WpOrg\Support\MemberData::is_upload_field($field)) {
+                $upload_fields[] = 'wp_org_' . $field['key'];
+            }
+        }
+        $upload_fields[] = 'wp_org_premium_proof_url'; // Also include premium proof
+
+        foreach ($all_meta as $meta_key => $meta_values) {
+            if (in_array($meta_key, $upload_fields, true)) {
+                foreach ($meta_values as $url) {
+                    $attachment_id = attachment_url_to_postid($url);
+                    if ($attachment_id) {
+                        wp_delete_attachment($attachment_id, true); // Force delete permanently
+                    }
+                }
+            }
+        }
+
+        // Also delete member card background/logo if they're linked to this user? Wait no, member card settings are site-wide, skip that.
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        wp_delete_user($user_id);
+
+        wp_safe_redirect(admin_url('admin.php?page=wp-org'));
+        exit;
+    }
+
     public function enqueue_admin_assets($hook_suffix)
     {
         if (!in_array($hook_suffix, ['toplevel_page_wp-org', 'wp-org_page_wp-org-fields', 'wp-org_page_wp-org-settings'], true)) {
@@ -1230,6 +1275,20 @@ class AdminMenu
         submit_button('Update Premium', 'secondary', 'submit', false);
         $html .= (string) ob_get_clean();
         $html .= '</div></form></div>';
+        $html .= '<div class="wp-org-admin-modal-section wp-org-admin-danger-zone"><h4>Hapus Anggota</h4><p class="wp-org-admin-subtle">Tindakan ini permanen dan tidak dapat dibatalkan. Semua data anggota akan dihapus.</p><button type="button" class="button button-danger wp-org-admin-open-modal" data-modal-target="wp-org-delete-member-' . esc_attr($user->ID) . '">Hapus Anggota</button></div>';
+        
+        // Delete confirmation modal
+        $html .= '<div id="wp-org-delete-member-' . esc_attr($user->ID) . '" class="wp-org-admin-modal" aria-hidden="true"><div class="wp-org-admin-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="wp-org-delete-member-' . esc_attr($user->ID) . '-title">';
+        $html .= '<div class="wp-org-admin-modal-header"><div><p class="wp-org-modal-eyebrow">Danger Zone</p><h3 id="wp-org-delete-member-' . esc_attr($user->ID) . '-title">Konfirmasi Hapus Anggota</h3><p class="wp-org-muted">Akun dan semua data anggota ' . esc_html($full_name) . ' akan dihapus permanen.</p></div><button type="button" class="wp-org-admin-modal-close" aria-label="Tutup">&times;</button></div>';
+        $html .= '<div class="wp-org-delete-modal-note"><strong>Perlu diperhatikan:</strong> tindakan ini tidak dapat dibatalkan setelah dikonfirmasi.</div>';
+        $html .= '<form class="wp-org-grid" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        ob_start();
+        wp_nonce_field('wp_org_delete_member_' . $user->ID);
+        $html .= (string) ob_get_clean();
+        $html .= '<input type="hidden" name="action" value="wp_org_delete_member"><input type="hidden" name="user_id" value="' . esc_attr((string) $user->ID) . '">';
+        $html .= '<div class="wp-org-actions"><button type="button" class="button button-secondary wp-org-admin-modal-close">Batal</button><button type="submit" class="button button-danger">Ya, Hapus Anggota</button></div>';
+        $html .= '</form>';
+        $html .= '</div></div>';
         $html .= '</div></div></div>';
 
         return $html;
