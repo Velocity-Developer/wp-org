@@ -54,6 +54,24 @@ jQuery(function($) {
         $keyPreview.text(key ? 'ID: ' + key : 'ID akan dibuat otomatis dari label');
     }
 
+    $(document).on('click', '.wp-org-edit-key', function() {
+        var $row = $(this).closest('tr');
+        var $keyInput = $row.find('.wp-org-field-key');
+        var $keyPreview = $row.find('.wp-org-field-key-preview');
+        
+        // Toggle visibility
+        $keyInput.toggle();
+        $keyPreview.toggle();
+        
+        // Also update the sync behavior
+        if ($keyInput.is(':visible')) {
+            $row.attr('data-key-locked', '1'); // Allow manual editing
+        } else {
+            $row.attr('data-key-locked', '0'); // Back to auto-generate
+            syncFieldKey($row); // Update from label
+        }
+    });
+
     function syncOptionState($row) {
         var type = $row.find('.wp-org-field-type').val();
         var $optionsCell = $row.find('.wp-org-field-options-cell');

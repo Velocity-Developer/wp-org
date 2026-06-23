@@ -410,16 +410,19 @@ class Profile
     {
         $display_name = get_user_meta($user_id, 'wp_org_full_name', true);
         if (!$display_name) {
-            $user = wp_get_current_user();
-            $display_name = $user->display_name;
+            $user = get_userdata($user_id);
+            $display_name = $user->display_name ?? '';
         }
 
         $member_card_settings = get_option('wp_org_member_card_settings', []);
         $member_number = MemberData::get_member_number($user_id);
         $region = MemberData::get_user_region_summary($user_id);
-        $issued_at = get_user_meta($user_id, 'wp_org_premium_requested_at', true);
-        if (!$issued_at) {
-            $issued_at = current_time('mysql');
+        
+        // Get registration date
+        $registered_at = get_user_meta($user_id, 'wp_org_registered_at', true);
+        if (!$registered_at) {
+            $user = get_userdata($user_id);
+            $registered_at = $user->user_registered ?? current_time('mysql');
         }
 
         return [
@@ -432,7 +435,7 @@ class Profile
             'name' => $display_name,
             'number' => $member_number,
             'region' => $region ?: 'Indonesia',
-            'issued_at' => mysql2date('d M Y', $issued_at),
+            'issued_at' => mysql2date('d M Y', $registered_at),
             'filename' => 'kartu-anggota-' . strtolower(sanitize_title($display_name ?: (string) $user_id)) . '.pdf',
         ];
     }

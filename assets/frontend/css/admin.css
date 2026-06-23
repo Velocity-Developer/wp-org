@@ -341,6 +341,12 @@
     font-size: 14px;
     font-weight: 600;
 }
+.wp-org-fields-table .wp-org-field-key {
+    min-height: 42px;
+    padding: 0 12px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
 
 .wp-org-fields-table .wp-org-field-type {
     min-height: 42px;
